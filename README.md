@@ -212,114 +212,130 @@ Failed checks → output rejected, agent must fix.
 - ✅ Linux (x86_64, arm64)
 - ✅ Windows (via WSL2 recommended)
 
-### Step 1: Install OpenClaw
+### Step 1: System Dependencies (terminal commands)
 
+On a fresh machine, run these in your terminal first:
+
+**macOS:**
 ```bash
-npm install -g openclaw
-openclaw --version   # verify: should be v0.9+
+# 1. Install Homebrew (package manager)
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# 2. Install Node.js (v18+ required, v20+ recommended)
+brew install node
+
+# 3. Install Git
+brew install git
+
+# 4. Verify
+node -v    # should show v18+
+npm -v     # should show v9+
+git --version
 ```
 
-If you haven't configured OpenClaw yet, run the setup wizard:
+**Linux (Ubuntu/Debian):**
+```bash
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install -y nodejs git
+```
+
+**Windows:**
+```bash
+# Install WSL2 first (recommended)
+wsl --install
+
+# Then inside WSL, follow Linux steps above
+```
+
+### Step 2: Install OpenClaw + ClawHub
+
+```bash
+# Install OpenClaw (the AI agent runtime)
+npm install -g openclaw
+
+# Install ClawHub (skill marketplace CLI)
+npm install -g clawhub
+
+# Install mcporter (MCP server management — needed for translate etc.)
+npm install -g mcporter
+
+# Verify
+openclaw --version   # should be v0.9+
+clawhub --version
+mcporter --version
+```
+
+### Step 3: Run OpenClaw Setup Wizard
+
 ```bash
 openclaw setup
 ```
 
-This will guide you through:
-- Choosing your LLM provider (Anthropic, OpenAI, etc.)
-- Setting your API key
-- Configuring your workspace directory
+This guides you through:
+- Choosing your LLM provider (Anthropic, OpenAI, Google, etc.)
+- Setting your LLM API key
+- Configuring your workspace directory (`~/.openclaw/workspace/`)
+- Setting up a messaging channel (Telegram, Discord, etc. — optional)
 
-### Step 2: Verify LLM & Tools
+### Step 4: Configure Search API Keys
 
-This framework requires an LLM with **tool use** (function calling) support:
+Research agents need web search to function. **Without these, agents produce empty results.**
 
-| Provider | Supported Models | Recommended |
-|----------|-----------------|-------------|
-| Anthropic | Claude Opus, Sonnet, Haiku | ✅ Claude Sonnet 4 (best cost/performance) |
-| OpenAI | GPT-4o, GPT-4.1 | ✅ GPT-4o |
-| Google | Gemini 2.5 Pro | ✅ Gemini 2.5 Pro |
-
-Verify your tools are working:
 ```bash
-# OpenClaw should have these built-in:
-# - web_search (Brave Search API — requires free API key)
-# - web_fetch (no key required)
-# - exec (shell commands)
-# - read/write/edit (file operations)
-# - sessions_spawn (sub-agent dispatch — core to this framework)
+# Brave Search API (required — powers web_search)
+# Get free key at: https://brave.com/search/api/ (2,000 queries/month free)
+openclaw config set braveApiKey YOUR_BRAVE_KEY_HERE
+
+# Tavily API (required for deep research — RADAR/SCOUT use this)
+# Get free key at: https://tavily.com (1,000 queries/month free)
+# Add to your shell config:
+echo 'export TAVILY_API_KEY="tvly-YOUR_KEY_HERE"' >> ~/.zshrc
+source ~/.zshrc
 ```
 
-> **⚠️ web_search requires a Brave Search API key.** Get one free at [brave.com/search/api](https://brave.com/search/api/). Without it, research agents (RADAR, SCOUT) will have degraded performance.
+### Step 5: Install Skills from ClawHub
 
-### Step 3: Clone & Deploy
+```bash
+# For e-commerce team:
+clawhub install cn-ecommerce-search    # Search Taobao/JD/1688/PDD/Douyin
+clawhub install tavily-search          # AI-powered deep research
+
+# For content team:
+clawhub install summarize              # Summarize URLs, PDFs, videos
+clawhub install humanizer-zh           # Remove AI writing patterns from Chinese text
+
+# Verify installed skills:
+ls ~/.openclaw/workspace/skills/
+```
+
+### Step 6: Clone & Deploy This Framework
 
 ```bash
 # Clone the repo
 git clone https://github.com/Richchen-maker/openclaw-multi-agent-team.git
 
-# Copy the example team into your OpenClaw workspace
+# Copy whichever team you want into your OpenClaw workspace
 cp -r openclaw-multi-agent-team/examples/ecommerce-team ~/.openclaw/workspace/ecommerce-team
+cp -r openclaw-multi-agent-team/examples/content-team ~/.openclaw/workspace/content-team
+
+# Copy the framework docs (needed for multi-team routing)
+cp -r openclaw-multi-agent-team/framework ~/.openclaw/workspace/framework
 ```
 
-### Step 4: Verify Installation
+### Step 7: Verify Everything Works
 
-Tell your OpenClaw agent:
+Start OpenClaw and tell it:
 > "读取 ecommerce-team/ORCHESTRATOR.md，确认框架就绪"
 
-If the agent can read the file and list available tools, you're good to go.
+If the agent can read the file and list available tools, you're ready to go. Try:
+> "启动电商团队，评估品类：蓝牙耳机"
 
-### Step 5: Install Required Skills & API Keys
-
-The framework's research agents rely on these tools. **Without them, agents will produce low-quality or empty results.**
-
-#### Required: Brave Search API (free)
-
-All research agents use `web_search`, which requires a Brave Search API key:
-
-1. Go to [brave.com/search/api](https://brave.com/search/api/) → sign up (free tier: 2,000 queries/month)
-2. Copy your API key
-3. Add it to your OpenClaw config:
-```bash
-openclaw config set braveApiKey YOUR_KEY_HERE
-```
-
-#### Required: ClawHub CLI + Skills
-
-[ClawHub](https://clawhub.com) is the skill marketplace for OpenClaw. Install it, then install the skills the teams need:
-
-```bash
-# Install ClawHub CLI
-npm install -g clawhub
-
-# For e-commerce team:
-clawhub install cn-ecommerce-search    # Search Taobao/JD/1688/PDD/Douyin
-clawhub install tavily-search          # AI-powered deep research (needs Tavily API key)
-
-# For content team:
-clawhub install summarize              # Summarize URLs, PDFs, videos
-clawhub install humanizer-zh           # Remove AI writing patterns from Chinese text
-```
-
-#### Required: Tavily API Key (for deep research)
-
-RADAR and SCOUT agents use Tavily for deep market research:
-
-1. Go to [tavily.com](https://tavily.com) → sign up (free tier: 1,000 queries/month)
-2. Copy your API key
-3. Set it as environment variable:
-```bash
-export TAVILY_API_KEY="tvly-YOUR_KEY_HERE"
-# Add to your ~/.zshrc or ~/.bashrc to persist
-```
-
-#### Optional: Extra Tools
-
-These improve specific capabilities but aren't strictly required:
+### Optional: Extra Tools
 
 | Tool | Benefits | Install |
 |------|----------|---------|
-| [mcporter](https://clawhub.com) | MCP server management (translate, etc.) | `npm install -g mcporter` |
-| Browser tool | Competitor page analysis, screenshots | Included with OpenClaw (needs Chrome/Chromium) |
+| [Playwright](https://playwright.dev/) | Browser automation for competitor analysis | `npm install -g playwright` |
+| Chrome/Chromium | Browser tool page analysis | [Download](https://www.google.com/chrome/) |
 | [Feishu integration](https://docs.openclaw.ai) | Output reports to Feishu docs | Configure in OpenClaw settings |
 
 ### Troubleshooting Installation
