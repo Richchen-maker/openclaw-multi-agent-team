@@ -16,6 +16,20 @@ You don't get one AI assistant — you get a **factory that builds entire specia
 
 **All teams coexist in one workspace. Different tasks dispatch different teams. No conflicts.**
 
+### 📱 Use Your Phone as a Remote Control
+
+Connect OpenClaw to **Telegram, Discord, Slack, or WeChat** — then dispatch teams from anywhere:
+
+```
+You (on phone):  "启动电商团队，评估品类：蓝牙耳机"
+OpenClaw (on your Mac/server):  → spins up 5 agents → runs 10-20 min → sends results back to your phone
+
+You (on phone):  "content团队写3篇小红书种草文案，话题：露营装备"
+OpenClaw:  → researcher + writer + editor + publisher → delivers publish-ready content to your chat
+```
+
+Your computer does the heavy lifting. You just send messages and receive results. **Works while you sleep, commute, or surf.**
+
 ---
 
 ## Architecture
@@ -295,12 +309,37 @@ openclaw setup
 This interactive wizard guides you through:
 - Choosing your LLM provider and entering your API key
 - Configuring your workspace directory (`~/.openclaw/workspace/`)
-- Setting up a messaging channel (Telegram, Discord, etc. — optional but recommended)
+- **Setting up a messaging channel** (see below)
 
-After setup, start OpenClaw:
+#### Set Up Telegram as Remote Control (recommended)
+
+This lets you dispatch teams from your phone — anywhere, anytime.
+
+1. Open Telegram → search `@BotFather` → send `/newbot` → follow prompts → copy the **bot token**
+2. Send any message to your new bot, then visit `https://api.telegram.org/bot<YOUR_TOKEN>/getUpdates` → find your **chat ID** in the response
+3. Add to your OpenClaw config (`~/.openclaw/openclaw.json`):
+```json
+{
+  "channels": {
+    "telegram": {
+      "enabled": true,
+      "botToken": "YOUR_BOT_TOKEN",
+      "dmPolicy": "allowlist",
+      "allowFrom": ["YOUR_CHAT_ID"]
+    }
+  }
+}
+```
+
+Other supported channels: **Discord, Slack, WeChat (via WeChat Work), Feishu**. See [OpenClaw docs](https://docs.openclaw.ai) for setup.
+
+#### Start OpenClaw
+
 ```bash
 openclaw gateway start
 ```
+
+OpenClaw now runs in the background. Send a message to your Telegram bot — if it replies, you're connected. 🎉
 
 ### Step 5: Configure Search API Keys
 
