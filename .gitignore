@@ -1,0 +1,12 @@
+# Agent outputs (generated at runtime)
+examples/*/output/*.md
+!examples/*/output/.gitkeep.md
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+*.swp
+*.swo
+*~
