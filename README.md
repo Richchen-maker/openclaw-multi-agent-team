@@ -268,15 +268,59 @@ Tell your OpenClaw agent:
 
 If the agent can read the file and list available tools, you're good to go.
 
-### Optional: Enhanced Tools
+### Step 5: Install Required Skills & API Keys
 
-These are **not required** but improve specific roles:
+The framework's research agents rely on these tools. **Without them, agents will produce low-quality or empty results.**
+
+#### Required: Brave Search API (free)
+
+All research agents use `web_search`, which requires a Brave Search API key:
+
+1. Go to [brave.com/search/api](https://brave.com/search/api/) → sign up (free tier: 2,000 queries/month)
+2. Copy your API key
+3. Add it to your OpenClaw config:
+```bash
+openclaw config set braveApiKey YOUR_KEY_HERE
+```
+
+#### Required: ClawHub CLI + Skills
+
+[ClawHub](https://clawhub.com) is the skill marketplace for OpenClaw. Install it, then install the skills the teams need:
+
+```bash
+# Install ClawHub CLI
+npm install -g clawhub
+
+# For e-commerce team:
+clawhub install cn-ecommerce-search    # Search Taobao/JD/1688/PDD/Douyin
+clawhub install tavily-search          # AI-powered deep research (needs Tavily API key)
+
+# For content team:
+clawhub install summarize              # Summarize URLs, PDFs, videos
+clawhub install humanizer-zh           # Remove AI writing patterns from Chinese text
+```
+
+#### Required: Tavily API Key (for deep research)
+
+RADAR and SCOUT agents use Tavily for deep market research:
+
+1. Go to [tavily.com](https://tavily.com) → sign up (free tier: 1,000 queries/month)
+2. Copy your API key
+3. Set it as environment variable:
+```bash
+export TAVILY_API_KEY="tvly-YOUR_KEY_HERE"
+# Add to your ~/.zshrc or ~/.bashrc to persist
+```
+
+#### Optional: Extra Tools
+
+These improve specific capabilities but aren't strictly required:
 
 | Tool | Benefits | Install |
 |------|----------|---------|
-| [Brave Search API](https://brave.com/search/api/) | Required for web_search | Free tier: 2,000 queries/month |
-| [cn-ecommerce-search](https://clawhub.com) | Chinese e-commerce platform search (Taobao, JD, 1688, PDD) | `clawhub install cn-ecommerce-search` |
-| Browser tool | Competitor page analysis, screenshot capture | Included with OpenClaw (needs Chrome/Chromium) |
+| [mcporter](https://clawhub.com) | MCP server management (translate, etc.) | `npm install -g mcporter` |
+| Browser tool | Competitor page analysis, screenshots | Included with OpenClaw (needs Chrome/Chromium) |
+| [Feishu integration](https://docs.openclaw.ai) | Output reports to Feishu docs | Configure in OpenClaw settings |
 
 ### Troubleshooting Installation
 
