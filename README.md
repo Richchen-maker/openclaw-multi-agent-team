@@ -202,8 +202,8 @@ Failed checks → output rejected, agent must fix.
 
 | Dependency | Minimum Version | Check Command | Install |
 |-----------|----------------|---------------|---------|
-| **Node.js** | v18+ (v20+ recommended) | `node -v` | [nodejs.org](https://nodejs.org/) or `brew install node` |
-| **npm** | v9+ | `npm -v` | Comes with Node.js |
+| **Node.js** | **v22.12.0+** (required) | `node -v` | [nodejs.org](https://nodejs.org/) or `brew install node` |
+| **npm** | v10+ | `npm -v` | Comes with Node.js |
 | **Git** | v2.30+ | `git --version` | [git-scm.com](https://git-scm.com/) or `brew install git` |
 
 ### Supported Platforms
@@ -214,38 +214,47 @@ Failed checks → output rejected, agent must fix.
 
 ### Step 1: System Dependencies (terminal commands)
 
-On a fresh machine, run these in your terminal first:
+On a fresh machine, you need **3 things** installed before anything else: **Node.js**, **npm**, and **Git**.
 
 **macOS:**
 ```bash
-# 1. Install Homebrew (package manager)
+# 1. Install Homebrew (macOS package manager — skip if already installed)
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
-# 2. Install Node.js (v18+ required, v20+ recommended)
+# 2. Install Node.js (v22.12+ REQUIRED — OpenClaw won't run on older versions)
 brew install node
 
-# 3. Install Git
+# 3. Install Git (for cloning repos)
 brew install git
 
-# 4. Verify
-node -v    # should show v18+
-npm -v     # should show v9+
-git --version
+# 4. Verify everything is installed
+node -v        # MUST show v22.12.0 or higher
+npm -v         # should show v10+
+git --version  # any recent version is fine
 ```
 
 **Linux (Ubuntu/Debian):**
 ```bash
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+# Node.js v22+ (NOT the default apt version — that's too old)
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
 sudo apt install -y nodejs git
+
+# Verify
+node -v   # MUST show v22.12.0+
 ```
 
 **Windows:**
 ```bash
-# Install WSL2 first (recommended)
+# Option A: Install WSL2 (recommended — gives you a Linux terminal)
 wsl --install
-
 # Then inside WSL, follow Linux steps above
+
+# Option B: Native Windows
+# Download Node.js v22+ from https://nodejs.org/
+# Download Git from https://git-scm.com/
 ```
+
+> ⚠️ **Node.js version matters!** OpenClaw requires **v22.12.0 or higher**. If `node -v` shows anything below v22, you must upgrade. Run `brew upgrade node` (macOS) or reinstall from [nodejs.org](https://nodejs.org/).
 
 ### Step 2: Install OpenClaw + ClawHub
 
@@ -265,19 +274,35 @@ clawhub --version
 mcporter --version
 ```
 
-### Step 3: Run OpenClaw Setup Wizard
+### Step 3: Get an LLM API Key
+
+This framework runs AI agents that need a large language model. You need **one** of these API keys:
+
+| Provider | Get API Key | Cost |
+|----------|------------|------|
+| **Anthropic** (recommended) | [console.anthropic.com](https://console.anthropic.com/) | Pay-per-use (~$3-15/team run with Claude Sonnet) |
+| OpenAI | [platform.openai.com](https://platform.openai.com/) | Pay-per-use |
+| Google | [aistudio.google.com](https://aistudio.google.com/) | Free tier available |
+
+> 💡 **Which model?** Claude Sonnet 4 is the best balance of cost and quality for this framework. Claude Opus is more powerful but ~5x the cost. GPT-4o also works well.
+
+### Step 4: Run OpenClaw Setup Wizard
 
 ```bash
 openclaw setup
 ```
 
-This guides you through:
-- Choosing your LLM provider (Anthropic, OpenAI, Google, etc.)
-- Setting your LLM API key
+This interactive wizard guides you through:
+- Choosing your LLM provider and entering your API key
 - Configuring your workspace directory (`~/.openclaw/workspace/`)
-- Setting up a messaging channel (Telegram, Discord, etc. — optional)
+- Setting up a messaging channel (Telegram, Discord, etc. — optional but recommended)
 
-### Step 4: Configure Search API Keys
+After setup, start OpenClaw:
+```bash
+openclaw gateway start
+```
+
+### Step 5: Configure Search API Keys
 
 Research agents need web search to function. **Without these, agents produce empty results.**
 
@@ -293,7 +318,7 @@ echo 'export TAVILY_API_KEY="tvly-YOUR_KEY_HERE"' >> ~/.zshrc
 source ~/.zshrc
 ```
 
-### Step 5: Install Skills from ClawHub
+### Step 6: Install Skills from ClawHub
 
 ```bash
 # For e-commerce team:
@@ -308,7 +333,7 @@ clawhub install humanizer-zh           # Remove AI writing patterns from Chinese
 ls ~/.openclaw/workspace/skills/
 ```
 
-### Step 6: Clone & Deploy This Framework
+### Step 7: Clone & Deploy This Framework
 
 ```bash
 # Clone the repo
@@ -322,7 +347,7 @@ cp -r openclaw-multi-agent-team/examples/content-team ~/.openclaw/workspace/cont
 cp -r openclaw-multi-agent-team/framework ~/.openclaw/workspace/framework
 ```
 
-### Step 7: Verify Everything Works
+### Step 8: Verify Everything Works
 
 Start OpenClaw and tell it:
 > "读取 ecommerce-team/ORCHESTRATOR.md，确认框架就绪"
