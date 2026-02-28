@@ -158,6 +158,30 @@ Execution:
 
 ---
 
+## Event-Driven Cross-Team Collaboration
+
+除了用户指令触发（上述路由机制），团队执行过程中可以**自动触发其他团队**。
+
+详见 [EVENT-BUS.md](EVENT-BUS.md) — 跨团队事件总线协议。
+
+```
+用户指令 → TEAM-ROUTER 路由 → Team A 执行
+                                    │
+                                    ├─ 遇到数据缺口 → 写 DATA_GAP 事件
+                                    │                      ↓
+                                    │               Event Bus 路由
+                                    │                      ↓
+                                    │               Team B 采集数据
+                                    │                      ↓
+                                    │               结果回流 Team A
+                                    ↓
+                              Team A 继续执行 → 交付用户
+```
+
+**TEAM-ROUTER 负责入口，EVENT-BUS 负责接力。**
+
+---
+
 ## Adding a New Team
 
 1. 创建 `teams/<name>/` 目录结构（ORCHESTRATOR.md + roles/ + blackboard/）

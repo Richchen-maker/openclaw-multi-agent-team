@@ -179,7 +179,9 @@ Teams don't live in silos. They form a **company-level workflow**:
 
 You're not running isolated agents. You're running **an organization**.
 
-Build as many teams as you need. Connect them through cross-team interfaces. One person, one framework, unlimited teams — operating like a full company.
+Build as many teams as you need. Connect them through the [Event Bus](framework/EVENT-BUS.md). One person, one framework, unlimited teams — operating like a full company.
+
+**Full chain runs with zero human intervention. You only said one sentence.**
 
 ---
 
