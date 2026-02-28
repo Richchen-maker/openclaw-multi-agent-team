@@ -1,6 +1,6 @@
 # 数据采集团队 — DISPATCHER 调度协议
 
-> DISPATCHER不是sub-agent，是Lead（鳄策异辉）自身的执行协议。
+> DISPATCHER不是sub-agent，是Lead（YOUR_AGENT_NAME）自身的执行协议。
 
 ## 调度决策树
 

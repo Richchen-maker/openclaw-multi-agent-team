@@ -15,7 +15,7 @@ data-collection-team   ← ARC是data-collection的"重武器库"，
 ## 快速启动
 
 ### 启动命令
-对鳄策异辉说：
+对YOUR_AGENT_NAME说：
 - **"启动ARC团队，目标：[平台名] [任务描述]"**
 - 例："启动ARC团队，目标：淘宝x-sign签名逆向"
 - 例："启动ARC团队，目标：Shopee反爬突破，采集全量SKU"

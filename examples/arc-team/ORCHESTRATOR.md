@@ -1,11 +1,11 @@
 # ARC Team — Orchestrator 执行协议
 
-当老板说"启动ARC团队"时，鳄策异辉作为COMMANDER执行以下协议。
+当老板说"启动ARC团队"时，YOUR_AGENT_NAME作为COMMANDER执行以下协议。
 
 ## 架构
 
 ```
-[老板] ←→ Telegram/Webchat ←→ [鳄策异辉 COMMANDER / opus]
+[老板] ←→ Telegram/Webchat ←→ [YOUR_AGENT_NAME COMMANDER / opus]
                                     ↓ 调度
                        三纵队 × 6核心角色 (sub-agent)
                        + 共享支撑层 (横向)

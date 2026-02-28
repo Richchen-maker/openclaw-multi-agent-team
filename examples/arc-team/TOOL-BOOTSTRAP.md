@@ -30,7 +30,7 @@
 
 ```bash
 # 运行完整验证
-bash /Users/rich/.openclaw/workspace/arc-team/scripts/verify-arsenal.sh
+bash ~/.openclaw/workspace/arc-team/scripts/verify-arsenal.sh
 
 # 结果写入黑板
 # → blackboard/TOOLKIT-STATUS.md
@@ -454,4 +454,4 @@ shodan stats --facets port "org:Target Corp"     # 端口统计
 ```
 
 ## 工作目录
-`/Users/rich/.openclaw/workspace/arc-team/`
+`~/.openclaw/workspace/arc-team/`

@@ -49,7 +49,7 @@ web_fetch url="https://www.1688.com" → 200=✅
 ### 5. 存储空间
 ```bash
 du -sh warehouse/
-df -h /Users/rich
+df -h ~
 → warehouse >100MB → 告警
 → 磁盘可用 <10GB → 告警
 ```

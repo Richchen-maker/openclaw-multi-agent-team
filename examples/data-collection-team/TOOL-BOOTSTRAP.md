@@ -34,7 +34,7 @@
 web_search query="test" count=1
 
 # 2. Tavily
-exec: TAVILY_API_KEY="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" node /Users/rich/.openclaw/workspace/skills/tavily-search/scripts/search.mjs "test" -n 1
+exec: TAVILY_API_KEY="YOUR_TAVILY_API_KEY" node ~/.openclaw/workspace/skills/tavily-search/scripts/search.mjs "test" -n 1
 
 # 3. Chrome浏览器状态
 browser action=status
@@ -53,7 +53,7 @@ exec: python3 -c "import sqlite3; print('OK')"
 exec: mcporter call translate.translate_text text="test" target="zh" source="en" --timeout 15000
 
 # 8. 磁盘空间
-exec: df -h /Users/rich → 可用>10GB=✅
+exec: df -h ~ → 可用>10GB=✅
 
 # 9. warehouse目录
 exec: ls warehouse/ → 存在且可写=✅
