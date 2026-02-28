@@ -8,11 +8,14 @@ You don't get one AI assistant — you get a **factory that builds entire specia
 
 **Build once, reuse everywhere.** Copy a template → define roles → new team in minutes.
 
-🛒 E-commerce team → market research + product scouting + pricing + content → Go/No-Go decision
-🔬 R&D team → literature review + technology analysis + experiment design → research report
+🛒 **E-commerce team** → market research + product scouting + pricing + content → Go/No-Go decision
+📡 **Data Collection team** → source mapping + web scraping + data cleaning + warehousing → structured datasets
+🛡️ **ARC team** → reverse engineering + fingerprint evasion + CAPTCHA solving + defense assessment → L1-L5 security report
 📝 Content team → audience research + copywriting + SEO + editing → publish-ready content
 💰 Investment team → due diligence + risk modeling + portfolio analysis → investment memo
 🎯 **Your team** → define any roles you need → your workflow, your rules
+
+> **3 production-tested teams included** — battle-hardened on real platforms (Taobao, 1688, JD, etc.)
 
 **All teams coexist in one workspace. Different tasks dispatch different teams. No conflicts.**
 
@@ -74,6 +77,49 @@ Your computer does the heavy lifting. You just send messages and receive results
 | **Full Pipeline** | "Evaluate category X" | CONDUCTOR → [parallel: Research + Scout] → [parallel: Content + Pricing] → Decision |
 | **Event-Driven** | Data anomaly detected | Monitor → CONDUCTOR → targeted specialist → Decision |
 | **Reactive** | Competitor move | CONDUCTOR → [parallel: Analyst + Pricing] → Quick Decision |
+
+### Included Teams
+
+#### 🛒 E-commerce Team (6 roles)
+| Role | Codename | Mission |
+|------|----------|---------|
+| Lead | **CONDUCTOR** | Task decomposition, dispatch, conflict arbitration |
+| Market Research | **RADAR** | Category trends, market size, growth signals |
+| Product Scouting | **SCOUT** | Supplier discovery, product evaluation, scoring |
+| Content Creation | **FORGE** | Listing copy, A+ content, SEO optimization |
+| Pricing Strategy | **BLADE** | Competitive pricing, margin modeling, dynamic pricing |
+| Data Monitoring | **PULSE** | Real-time alerts, anomaly detection, KPI tracking |
+| Decision Making | **ORACLE** | Go/No-Go with kill criteria and stop-loss conditions |
+
+#### 📡 Data Collection Team (6 roles)
+| Role | Codename | Mission |
+|------|----------|---------|
+| Lead | **DISPATCHER** | Task routing, source allocation, pipeline orchestration |
+| Source Mapper | **MAPPER** | Data source discovery, API/scraping feasibility analysis |
+| Web Spider | **SPIDER** | Structured crawling, pagination, anti-ban handling |
+| Data Refiner | **REFINER** | Cleaning, dedup, normalization, schema validation |
+| Data Warehouse | **WAREHOUSE** | Storage, indexing, versioning (SQLite + JSON) |
+| Sentinel | **SENTINEL** | Monitoring, alerting on source changes/failures |
+
+#### 🛡️ ARC Team — Anti-Risk Control (6 roles)
+| Role | Codename | Mission |
+|------|----------|---------|
+| Lead | **COMMANDER** | Mission planning, cross-role coordination |
+| Reverse Engineer | **REVERSER** | API reverse engineering, signature cracking, binary analysis |
+| Fingerprint Engineer | **PHANTOM** | TLS fingerprint spoofing, browser stealth, proxy management |
+| Protocol Attacker | **STRIKER** | Fuzzing, rate testing, protocol-level probing |
+| Risk Control Evader | **MIMIC** | CAPTCHA solving (5-engine system), behavior simulation, device fingerprinting |
+| Vulnerability Hunter | **HUNTER** | Vulnerability scanning, subdomain enumeration, XSS/SQLi detection |
+| Defense Analyst | **SHIELD** | WAF identification, TLS analysis, defense-level assessment (L1-L5) |
+
+> ⚠️ **ARC Team is for defense research only.** All tools and techniques are used to assess and improve your own platform's security posture. See `TOOL-BOOTSTRAP.md` for iron rules.
+
+#### Cross-Team Interfaces
+```
+data-collection SENTINEL failure → triggers ARC Mode C (emergency response)
+ecommerce-team data gap          → ARC targeted breach assessment
+ARC technical findings            → can feed patent team (if you have one)
+```
 
 ### Multi-Team Dispatch
 
@@ -151,27 +197,35 @@ openclaw-multi-agent-team/
 │   ├── TOOL-BOOTSTRAP.md         # Sub-agent tool injection template
 │   └── BLACKBOARD-SPEC.md        # Blackboard read/write rules
 ├── examples/
-│   └── ecommerce-team/           # Full working example
-│       ├── ORCHESTRATOR.md       # E-commerce specific orchestration
-│       ├── TOOLKIT.md            # Tool availability status
-│       ├── TOOL-BOOTSTRAP.md     # E-commerce tool bootstrap
-│       ├── templates/
-│       │   ├── 00-conductor.md   # Orchestrator protocol
-│       │   ├── 01-radar.md       # Market Research agent
-│       │   ├── 02-scout.md       # Product Scouting agent
-│       │   ├── 03-forge.md       # Content Creation agent
-│       │   ├── 04-blade.md       # Pricing Strategy agent
-│       │   ├── 05-pulse.md       # Data Monitoring agent
-│       │   └── 06-oracle.md      # Decision Making agent
+│   ├── ecommerce-team/           # 🛒 E-commerce — 6 roles (CONDUCTOR lead)
+│   │   ├── ORCHESTRATOR.md       # Dispatch protocol + 3 operating modes
+│   │   ├── TOOLKIT.md            # Tool availability matrix
+│   │   ├── TOOL-BOOTSTRAP.md     # Sub-agent tool injection
+│   │   ├── templates/            # 00-conductor → 06-oracle
+│   │   ├── blackboard/           # Shared state (TASKS, DECISIONS, PRODUCT-DB, etc.)
+│   │   └── output/
+│   ├── data-collection-team/     # 📡 Data Collection — 6 roles (DISPATCHER lead)
+│   │   ├── ORCHESTRATOR.md       # Pipeline: Map → Crawl → Clean → Store → Monitor
+│   │   ├── TOOL-BOOTSTRAP.md     # Scraping tool constraints
+│   │   ├── templates/            # 00-dispatcher → 06-analyst
+│   │   ├── tools/scripts/        # validator.py, pipeline.py, db.py, etc.
+│   │   ├── presets/              # Pre-configured task YAML files
+│   │   ├── blackboard/           # TASKS, SOURCES, SCHEMA, INCIDENTS
+│   │   └── output/
+│   ├── arc-team/                 # 🛡️ Anti-Risk Control — 6 roles (COMMANDER lead)
+│   │   ├── ORCHESTRATOR.md       # 3 modes: Reverse Breach / Defense Assessment / Emergency
+│   │   ├── TOOLKIT.md            # 54-weapon arsenal across 6 roles
+│   │   ├── TOOL-BOOTSTRAP.md     # Iron rules: recon before attack, minimize traces
+│   │   ├── templates/            # 01-reverser → 06-shield
+│   │   ├── tools/                # captcha_solver.py (5-layer multi-engine), curl-impersonate.go
+│   │   ├── scripts/              # install-arsenal.sh, verify-arsenal.sh, patch-ddddocr.sh
+│   │   ├── blackboard/           # ARSENAL, TARGETS, TASKS, INCIDENTS
+│   │   └── output/
+│   └── content-team/             # 📝 Content — 4 roles (CONDUCTOR lead)
+│       ├── ORCHESTRATOR.md
+│       ├── templates/            # 00-conductor → 04-publisher
 │       ├── blackboard/
-│       │   ├── TASKS.md
-│       │   ├── DECISIONS.md
-│       │   ├── MARKET-SIGNALS.md
-│       │   ├── PRODUCT-DB.md
-│       │   ├── COMPETITOR-MAP.md
-│       │   ├── METRICS.md
-│       │   └── ALERTS.md
-│       └── output/               # Agent outputs go here
+│       └── output/
 └── docs/
     ├── CUSTOMIZATION.md          # How to build your own team
     ├── ROLE-DESIGN.md            # Best practices for role templates
@@ -380,6 +434,8 @@ git clone https://github.com/Richchen-maker/openclaw-multi-agent-team.git
 
 # Copy whichever team you want into your OpenClaw workspace
 cp -r openclaw-multi-agent-team/examples/ecommerce-team ~/.openclaw/workspace/ecommerce-team
+cp -r openclaw-multi-agent-team/examples/data-collection-team ~/.openclaw/workspace/data-collection-team
+cp -r openclaw-multi-agent-team/examples/arc-team ~/.openclaw/workspace/arc-team
 cp -r openclaw-multi-agent-team/examples/content-team ~/.openclaw/workspace/content-team
 
 # Copy the framework docs (needed for multi-team routing)

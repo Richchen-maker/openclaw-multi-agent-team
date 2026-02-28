@@ -2,6 +2,22 @@
 examples/*/output/*.md
 !examples/*/output/.gitkeep.md
 
+# Python
+*.pyc
+__pycache__/
+.venv*/
+*.egg-info/
+
+# Data files (generated at runtime)
+*.db
+*.sqlite
+warehouse/raw/
+warehouse/cleaned/
+warehouse/archive/
+
+# Go
+go.sum
+
 # OS files
 .DS_Store
 Thumbs.db

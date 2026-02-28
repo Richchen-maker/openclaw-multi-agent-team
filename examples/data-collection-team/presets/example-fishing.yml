@@ -1,0 +1,14 @@
+# 采集预设示例 — 钓鱼配件
+name: "钓鱼配件热词采集"
+platform: sycm
+data_type: search_keywords
+categories:
+  - name: "攀岩小配件"
+    url: "https://sycm.taobao.com/mq/words/search_words.htm?cateId=xxx"
+    pages: 10
+  - name: "浮珠"
+    url: "https://sycm.taobao.com/mq/words/search_words.htm?cateId=xxx"
+    pages: 10
+period: "30d"
+delay_seconds: 3
+schedule: "daily"  # daily / weekly / manual
