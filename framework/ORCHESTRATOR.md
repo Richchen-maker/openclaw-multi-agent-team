@@ -132,6 +132,75 @@ After each step, notify the user:
 
 ---
 
+## Cross-Team Event Protocol (MANDATORY)
+
+Every team MUST implement this protocol. It enables automatic collaboration between teams.
+
+### Before Execution — Check Inbound Events
+
+```
+1. Scan events/pending/ for events where target_team = this team
+2. If found → prioritize event handling over user instructions (event-driven mode)
+3. Read event context → execute accordingly → write result
+4. Move processed event to events/resolved/
+```
+
+### During Execution — Emit Events When Blocked
+
+When your team encounters a situation it cannot resolve alone:
+
+| Situation | Event Type | Target |
+|-----------|-----------|--------|
+| Missing data needed for analysis | `DATA_GAP` | data-collection-team |
+| Crawl/scrape blocked by anti-bot | `CRAWL_BLOCKED` | arc-team (Mode C) |
+| Need defense assessment before crawl | `CRAWL_STRATEGY` | arc-team (Mode B) |
+| Data anomaly detected | `ANOMALY` | data-collection-team |
+| Security incident (banned/blocked) | `SECURITY_INCIDENT` | arc-team (Mode C) |
+
+### After Execution — Emit Result Events
+
+When your team completes a task requested by another team:
+
+| Situation | Event Type | Target |
+|-----------|-----------|--------|
+| Defense/bypass strategy ready | `DEFENSE_REPORT` | requesting team |
+| Requested data collected + cleaned | `DATA_READY` | requesting team |
+| Market signal worth evaluating | `MARKET_SIGNAL` | ecommerce-team |
+
+### Event File Format
+
+Write to `events/pending/{NNN}-{EVENT_TYPE}.md`:
+
+```yaml
+---
+event_id: "evt-{project}-{NNN}"
+event_type: DATA_GAP
+severity: HIGH
+source_team: your-team-name
+source_role: ROLE_NAME
+timestamp: "ISO8601"
+status: pending
+chain_depth: N        # increment from parent event
+callback:
+  team: requesting-team
+  resume_role: ROLE_NAME
+  write_to: "team/blackboard/FILE.md"
+---
+
+## Context
+What happened and why you need help.
+
+## Request
+What you need from the target team.
+```
+
+### Safety
+- **Never exceed chain_depth 5** — if chain_depth ≥ 5, write to failed/ and alert
+- **Always include callback** — so results flow back to the requesting team
+- **Watchdog is watching** — if your team stalls, Watchdog auto-recovers within 2 minutes
+
+---
+
 ## Quality Gate Checklist
 
 ```

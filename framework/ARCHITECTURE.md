@@ -243,6 +243,115 @@ See [TEAM-ROUTER.md](./TEAM-ROUTER.md) for routing rules, collaboration modes, a
 
 ---
 
+## Cross-Team Auto-Collaboration (MANDATORY)
+
+> **Every team built with this framework MUST integrate the Event Bus + Watchdog system.**
+> This is not optional — it is the core capability that makes multi-team collaboration work.
+
+### Architecture
+
+```
+┌──────────────────────────────────────────────────────────┐
+│                      WATCHDOG                            │
+│          (Every 2min: detect stalls, auto-recover)       │
+│                                                          │
+│  Checks: STALE_PENDING | STALE_PROCESSING | CHAIN_BROKEN │
+│          FORMAT_ERROR  | BUS_DOWN                        │
+│  Recovery: auto-dispatch | auto-retry | re-emit          │
+│  Alert: CRITICAL → notify user | WARNING → log only     │
+└──────────────────────┬───────────────────────────────────┘
+                       │ monitors
+┌──────────────────────▼───────────────────────────────────┐
+│                    EVENT BUS                              │
+│           (Scan → Route → Dispatch → Resolve)            │
+│                                                          │
+│  Events:  DATA_GAP | CRAWL_BLOCKED | DEFENSE_REPORT      │
+│           DATA_READY | ANOMALY | MARKET_SIGNAL           │
+│           CRAWL_STRATEGY | SECURITY_INCIDENT             │
+│                                                          │
+│  Lifecycle: pending/ → processing/ → resolved/ | failed/ │
+│  Safety: chain_depth ≤ 5 | dedup 60min | timeout 30min  │
+└──────────────────────┬───────────────────────────────────┘
+                       │ routes events between
+        ┌──────────────┼──────────────┐
+        ▼              ▼              ▼
+   ┌─────────┐   ┌─────────┐   ┌─────────┐
+   │ Team A  │   │ Team B  │   │ Team C  │
+   │         │──→│         │──→│         │
+   │         │←──│         │←──│         │
+   └─────────┘   └─────────┘   └─────────┘
+```
+
+### Integration Requirements for New Teams
+
+When creating a new team, you MUST:
+
+1. **Register event routes** — Add your team's event types to `framework/eventbus/router.py` or `eventbus.yaml`
+2. **Inject event awareness into ORCHESTRATOR.md** — Every team's orchestrator must include:
+   ```markdown
+   ## Cross-Team Event Protocol
+   
+   When executing tasks, if you encounter situations beyond this team's capability:
+   1. Data missing → write DATA_GAP event to events/pending/
+   2. Crawl blocked → write CRAWL_BLOCKED event
+   3. Task complete with results for another team → write DATA_READY event
+   
+   Before execution, check events/pending/ for events targeting this team.
+   Event file format: see framework/EVENT-BUS.md
+   ```
+3. **Define callback handlers** — Specify how your team receives results from other teams (which role resumes, where data is written)
+4. **Test the chain** — Before deploying, verify: emit event → Event Bus routes → your team receives → your team responds
+
+### Directory Structure (Required)
+
+```
+workspace/
+├── events/                    # MANDATORY — shared across all teams
+│   ├── pending/               # New events waiting for dispatch
+│   ├── processing/            # Events being handled by a team
+│   ├── resolved/              # Completed events
+│   └── failed/                # Failed events (needs attention)
+├── eventbus -> framework/eventbus/  # Symlink for CLI access
+├── run-eventbus.sh            # One-click Event Bus launcher
+├── team-alpha/                # Your teams
+├── team-beta/
+└── framework/
+    └── eventbus/              # Runtime code
+        ├── bus.py             # Core: scan → route → dispatch
+        ├── watchdog.py        # Monitoring + auto-recovery
+        ├── event.py           # Event data model
+        ├── router.py          # Routing table
+        ├── dispatcher.py      # Team dispatch
+        ├── cli.py             # CLI interface
+        └── config.py          # Configuration
+```
+
+### Monitoring (Required for Production)
+
+Set up two monitoring layers:
+
+1. **EventBus Watchdog cron** — Every 2 minutes, runs `python -m eventbus watchdog --fix`
+   - Auto-recovers stale events
+   - Alerts on chain breakage
+   - Notifies user on CRITICAL issues
+
+2. **System patrol cron** — Every 2 hours, checks overall system health
+   - Verifies Watchdog cron is running
+   - Checks disk/memory/CPU
+   - Reports untracked workspace files
+
+### Event Chain Safety Rules
+
+| Rule | Value | Purpose |
+|------|-------|---------|
+| Max chain depth | 5 | Prevent infinite loops (A→B→C→A→B...) |
+| Dedup window | 60 min | Same source+type won't re-trigger |
+| Pending timeout | 5 min | Watchdog auto-dispatches if Event Bus missed it |
+| Processing timeout | 30 min | Watchdog moves to failed + retries |
+| CRITICAL events | Always notify user | Human in the loop for emergencies |
+
+---
+
 ## Extending the Framework
 
 1. **Multi-domain**: Parameterize role templates by domain (ecommerce/research/content)
@@ -250,3 +359,4 @@ See [TEAM-ROUTER.md](./TEAM-ROUTER.md) for routing rules, collaboration modes, a
 3. **Memory system**: Write decision loop results to memory for cross-session context
 4. **Multi-project**: Partition blackboard by project/SKU for parallel management
 5. **User dashboard**: Decision role can push periodic summaries to chat
+6. **Cross-team collaboration**: Event Bus + Watchdog for automatic multi-team workflows (see above)
