@@ -1,13 +1,22 @@
 # 🏭 OpenClaw Multi-Agent Team Framework
 
-## 一套架构，造任何团队。
+**One framework. Unlimited teams. They work together.**
+
+一套框架，造无数支团队。团队之间还能协作。
+
+---
 
 不是给你一个Agent。是给你一个**造Agent团队的工厂**。
 
 你定义角色，你编排流程，你配武器库 —— 框架负责把它们变成一支能自主协作的团队。
 
-**电商选品？可以。数据采集？可以。安全攻防？可以。**
-**法务审查？投研分析？内容生产？学术科研？设备运维？**
+**关键是：你可以造很多支团队，它们之间能互相协作，像一家真正的公司一样运转。**
+
+电商团队发现数据缺口 → 自动触发数据采集团队补数据 → 采集被反爬拦截 → 自动触发安全团队突破 → 突破方案反哺回采集团队。
+
+**一个人，指挥一家公司。**
+
+电商选品？数据采集？安全攻防？法务审查？投研分析？内容生产？学术科研？
 **都可以。只要你能定义角色和流程，这套架构就能把它跑起来。**
 
 > 📖 **New here?** Start with the [Installation Guide (INSTALL.md)](INSTALL.md) — takes you from zero to running.
@@ -152,13 +161,25 @@ cp -r examples/ecommerce-team ~/.openclaw/workspace/my-research-team
 
 > ⚠️ **ARC Team is for defense research only.** See `TOOL-BOOTSTRAP.md` for iron rules.
 
-### Cross-Team Interfaces
+### Cross-Team Collaboration — This Is the Real Power
+
+Teams don't live in silos. They form a **company-level workflow**:
 
 ```
-data-collection SENTINEL failure → triggers ARC Mode C (emergency response)
-ecommerce-team data gap          → ARC targeted breach assessment
-ARC technical findings            → can feed patent/IP team (build your own)
+🛒 E-commerce spots data gap
+    ↓
+📡 Data Collection auto-dispatches crawl task
+    ↓ blocked by anti-bot
+🛡️ ARC assesses defense, provides bypass strategy
+    ↓ strategy fed back
+📡 Data Collection retries with new approach → data acquired
+    ↓
+🛒 E-commerce completes analysis with fresh data → Go/No-Go decision
 ```
+
+You're not running isolated agents. You're running **an organization**.
+
+Build as many teams as you need. Connect them through cross-team interfaces. One person, one framework, unlimited teams — operating like a full company.
 
 ---
 
