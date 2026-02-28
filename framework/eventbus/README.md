@@ -263,3 +263,58 @@ A: `Ctrl+C` if running in foreground, or `kill $(cat /tmp/eventbus.pid)` for dae
 
 **Q: Does this work across machines?**
 A: Not yet. Events are local filesystem files. For distributed setups, sync the `events/` directory (rsync, Dropbox, git).
+
+---
+
+## Watchdog
+
+智能监控系统，检测卡死的事件链并自动修复。
+
+### 5种检查
+
+| 检查类型 | 说明 | 级别 | 自动修复 |
+|---|---|---|---|
+| `STALE_PENDING` | pending/中事件超过5分钟未dispatch | WARNING→CRITICAL | ✅ 调用`run_once()` |
+| `STALE_PROCESSING` | processing/中事件超过30分钟 | CRITICAL | ✅ 移到failed/ + 写retry事件 |
+| `CHAIN_BROKEN` | resolved事件有callback但无后续事件 | CRITICAL | ✅ 重新emit callback事件 |
+| `FORMAT_ERROR` | YAML解析失败或缺少必须字段 | WARNING | ✅ 移到failed/ |
+| `BUS_DOWN` | EventBus进程/心跳丢失 | WARNING/CRITICAL | ❌ 需手动重启 |
+
+### CLI用法
+
+```bash
+# 运行一次检查
+python -m eventbus watchdog
+
+# 运行检查 + 自动修复
+python -m eventbus watchdog --fix
+
+# 持续监控（默认每2分钟）
+python -m eventbus watchdog --loop
+
+# 自定义间隔（60秒）
+python -m eventbus watchdog --loop --interval 60
+```
+
+### 自动修复机制
+
+- **幂等性**：多次运行不会产生重复修复
+- **重试上限**：每个事件最多自动重试2次（`max_auto_retries`）
+- **链路恢复**：读取resolved事件的callback字段，自动emit后续事件
+- **processing超时**：原事件移到failed/，新retry事件写入pending/并标注`[Watchdog auto-retry]`
+
+### 与OpenClaw cron集成
+
+```bash
+# 每5分钟运行一次watchdog检查+修复
+*/5 * * * * cd /path/to/workspace && python -m eventbus watchdog --fix >> /tmp/watchdog.log 2>&1
+```
+
+或使用OpenClaw内置cron：
+```yaml
+# openclaw.yaml
+cron:
+  - schedule: "*/5 * * * *"
+    command: "python -m eventbus watchdog --fix"
+    label: "eventbus-watchdog"
+```

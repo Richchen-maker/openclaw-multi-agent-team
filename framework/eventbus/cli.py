@@ -20,6 +20,7 @@ from .bus import EventBus
 from .config import load_config
 from .event import Event
 from .router import Router
+from .watchdog import Watchdog, watchdog_loop
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -50,6 +51,12 @@ def _build_parser() -> argparse.ArgumentParser:
     # route
     route_p = sub.add_parser("route", help="Look up route for event type")
     route_p.add_argument("event_type", help="Event type to look up")
+
+    # watchdog
+    wd_p = sub.add_parser("watchdog", help="Run watchdog health checks")
+    wd_p.add_argument("--fix", action="store_true", help="Auto-recover issues")
+    wd_p.add_argument("--loop", action="store_true", help="Continuous monitoring (every 2 min)")
+    wd_p.add_argument("--interval", type=int, default=120, help="Loop interval in seconds")
 
     return parser
 
@@ -110,6 +117,20 @@ def main(argv: list[str] | None = None) -> int:
             print(f"No route for {args.event_type}", file=sys.stderr)
             return 1
         return 0
+
+    elif args.command == "watchdog":
+        if args.loop:
+            watchdog_loop(workspace, interval=args.interval)
+            return 0
+        wd = Watchdog(workspace)
+        report = wd.check_all()
+        print(wd.format_report(report))
+        if args.fix and report.status != "HEALTHY":
+            results = wd.auto_recover_all(report)
+            for alert, ok in results:
+                tag = "✅" if ok else "❌"
+                print(f"  {tag} {alert.check_type} [{alert.event_id[:8] if alert.event_id else '-'}]: {alert.recovery_action}")
+        return 0 if report.status == "HEALTHY" else 1
 
     return 1
 
