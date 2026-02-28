@@ -421,6 +421,45 @@ bash ~/.openclaw/workspace/arc-team/scripts/verify-arsenal.sh
 
 ---
 
+---
+
+## Stage 8: Cross-Team Event Bus (Optional)
+
+Cross-team auto-collaboration engine. Teams trigger each other automatically through file-based events.
+
+### Install
+
+```bash
+pip install pyyaml
+mkdir -p events/{pending,processing,resolved,failed}
+```
+
+### Verify
+
+```bash
+python -m eventbus status
+```
+
+Expected output:
+```
+Event Bus Status
+────────────────
+  pending:    0
+  processing: 0
+  resolved:   0
+  failed:     0
+```
+
+### Start
+
+```bash
+python -m eventbus run
+```
+
+For details: [Cross-Team Guide](docs/CROSS-TEAM-GUIDE.md) | [Event Bus README](framework/eventbus/README.md)
+
+---
+
 ## License
 
 MIT — use it however you want.
