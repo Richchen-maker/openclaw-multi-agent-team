@@ -37,7 +37,7 @@ def _build_parser() -> argparse.ArgumentParser:
     emit_p.add_argument("--severity", default="INFO", choices=["LOW", "MEDIUM", "HIGH", "CRITICAL"])
     emit_p.add_argument("--source-team", required=True)
     emit_p.add_argument("--source-role", required=True)
-    emit_p.add_argument("--body", default="", help="Markdown body")
+    emit_p.add_argument("--context", default="", help="Event context / description (markdown body)")
     emit_p.add_argument("--chain-depth", type=int, default=0)
 
     # run
@@ -80,7 +80,7 @@ def main(argv: list[str] | None = None) -> int:
             severity=args.severity,
             source_team=args.source_team,
             source_role=args.source_role,
-            body=args.body,
+            body=args.context,
             chain_depth=args.chain_depth,
             events_dir=bus.events_dir,
         )
