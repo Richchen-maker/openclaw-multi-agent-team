@@ -19,6 +19,8 @@ You don't get one AI assistant — you get a **factory that builds entire specia
 
 **All teams coexist in one workspace. Different tasks dispatch different teams. No conflicts.**
 
+> 📖 **New here?** Start with the [Installation Guide (INSTALL.md)](INSTALL.md) — takes you from zero to running.
+
 ### 📱 Use Your Phone as a Remote Control
 
 Connect OpenClaw to **Telegram, Discord, Slack, or WeChat** — then dispatch teams from anywhere:
