@@ -24,9 +24,10 @@ REQUIRED_FIELDS = {"event_id", "event_type", "severity", "source_team", "source_
 class Event:
     """Represents a single event with YAML metadata and Markdown body."""
 
-    def __init__(self, metadata: dict[str, Any], body: str = "") -> None:
+    def __init__(self, metadata: dict[str, Any], body: str = "", *, _loaded_from_file: bool = False) -> None:
         self.metadata = metadata
         self.body = body
+        self._frozen_fields: bool = _loaded_from_file
 
     # -- 属性快捷访问 --
 
@@ -34,9 +35,21 @@ class Event:
     def event_id(self) -> str:
         return self.metadata["event_id"]
 
+    @event_id.setter
+    def event_id(self, value: str) -> None:
+        if self._frozen_fields:
+            raise AttributeError("event_id is immutable once loaded from file")
+        self.metadata["event_id"] = value
+
     @property
     def event_type(self) -> str:
         return self.metadata["event_type"]
+
+    @event_type.setter
+    def event_type(self, value: str) -> None:
+        if self._frozen_fields:
+            raise AttributeError("event_type is immutable once loaded from file")
+        self.metadata["event_type"] = value
 
     @property
     def severity(self) -> str:
@@ -112,7 +125,7 @@ class Event:
         if missing:
             raise ValueError(f"Missing required fields in {path}: {missing}")
 
-        return cls(metadata=metadata, body=body)
+        return cls(metadata=metadata, body=body, _loaded_from_file=True)
 
     def to_file(self, path: Path) -> None:
         """Write event to a Markdown file with YAML front-matter.

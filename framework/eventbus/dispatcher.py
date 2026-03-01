@@ -2,21 +2,53 @@
 Dispatcher implementations for EventBus.
 
 DefaultDispatcher: prints shell commands (dry-run / CI / non-OpenClaw environments)
-OpenClawDispatcher: actually spawns OpenClaw sub-agents to process events
+OpenClawDispatcher: writes dispatch request files for Watchdog cron to process
 """
 
 from __future__ import annotations
 
 import logging
-import subprocess
 import sys
+import uuid
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+import yaml
 
 from .databus import DataBus
 from .event import Event
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class DispatchRequest:
+    """A dispatch request written to events/.dispatch/ for Watchdog cron pickup."""
+    team: str
+    mode: str
+    event_id: str
+    prompt: str
+    status: str = "pending"
+    created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))
+    request_id: str = field(default_factory=lambda: str(uuid.uuid4())[:8])
+
+    def to_file(self, dispatch_dir: Path) -> Path:
+        """Write request as YAML to dispatch_dir."""
+        dispatch_dir.mkdir(parents=True, exist_ok=True)
+        data = {
+            "team": self.team,
+            "mode": self.mode,
+            "event_id": self.event_id,
+            "prompt": self.prompt,
+            "status": self.status,
+            "created_at": self.created_at,
+        }
+        filename = f"{self.created_at.replace(':', '').replace('-', '')[:15]}_{self.team}_{self.request_id}.yaml"
+        path = dispatch_dir / filename
+        path.write_text(yaml.dump(data, default_flow_style=False, allow_unicode=True), encoding="utf-8")
+        return path
 
 
 class Dispatcher:
@@ -114,7 +146,7 @@ class OpenClawDispatcher(Dispatcher):
         self.model: str | None = self.config.get("dispatch_model", None)
 
     def execute(self, team: str, mode: str, event: Event, prompt: str) -> bool:
-        """Spawn an OpenClaw sub-agent to handle the event.
+        """Write a dispatch request file for Watchdog cron to pick up.
 
         Args:
             team: Target team name.
@@ -123,42 +155,24 @@ class OpenClawDispatcher(Dispatcher):
             prompt: Generated prompt string (unused; we build our own).
 
         Returns:
-            True if the spawn CLI call succeeded.
+            True if the request file was written successfully.
         """
         task_prompt = self._build_task_prompt(team, mode, event)
-        label = f"eventbus-{team}-{mode}-{event.event_id[:8]}"
+        dispatch_dir = self.workspace_dir / "events" / ".dispatch"
 
-        cmd: list[str] = [
-            "openclaw", "sessions", "spawn",
-            "--runtime", "subagent",
-            "--mode", "run",
-            "--label", label,
-            "--run-timeout", str(self.config.get("dispatch_timeout", 300)),
-            "--task", task_prompt,
-        ]
-
-        if self.model:
-            cmd.extend(["--model", self.model])
+        request = DispatchRequest(
+            team=team,
+            mode=mode,
+            event_id=event.event_id,
+            prompt=task_prompt,
+        )
 
         try:
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=30,
-                cwd=str(self.workspace_dir),
-            )
-            if result.returncode == 0:
-                logger.info("Dispatched %s → %s mode=%s (label=%s)", event.event_id[:8], team, mode, label)
-                return True
-            else:
-                logger.error("Dispatch failed for %s: %s", event.event_id[:8], result.stderr.strip())
-                return False
-        except subprocess.TimeoutExpired:
-            logger.error("Dispatch CLI timeout for %s", event.event_id[:8])
-            return False
-        except FileNotFoundError:
-            logger.error("openclaw CLI not found in PATH")
+            path = request.to_file(dispatch_dir)
+            logger.info("Dispatch request written: %s → %s (mode=%s)", event.event_id[:8], team, path.name)
+            return True
+        except Exception as e:
+            logger.error("Failed to write dispatch request for %s: %s", event.event_id[:8], e)
             return False
 
     def _format_data_refs_section(self, event: Event) -> str:

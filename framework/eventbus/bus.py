@@ -54,8 +54,8 @@ class EventBus:
         for d in ["pending", "processing", "resolved", "failed"]:
             (self.events_dir / d).mkdir(parents=True, exist_ok=True)
 
-        # 去重追踪: (source_team, event_type) → last_timestamp
-        self._dedup_cache: dict[tuple[str, str], float] = {}
+        # 去重追踪: 已处理的event_id集合
+        self._dispatched_ids: set[str] = set()
 
         # 自进化引擎
         self.evolver = Evolver(self.workspace_dir)
@@ -99,22 +99,16 @@ class EventBus:
         return self.router.resolve(event.event_type)
 
     def _check_dedup(self, event: Event) -> bool:
-        """Check if event is a duplicate within the dedup window.
+        """Check if event_id has already been dispatched.
 
         Returns:
             True if duplicate (should skip).
         """
-        key = (event.source_team, event.event_type)
-        window = self.config.get("dedup_window", DEFAULT_CONFIG["dedup_window"])
-        now = time.time()
+        if event.event_id in self._dispatched_ids:
+            logger.warning("Dedup: skipping %s (event_id already dispatched)", event.event_id[:8])
+            return True
 
-        if key in self._dedup_cache:
-            elapsed = now - self._dedup_cache[key]
-            if elapsed < window:
-                logger.warning("Dedup: skipping %s from %s (%.0fs ago)", event.event_type, event.source_team, elapsed)
-                return True
-
-        self._dedup_cache[key] = now
+        self._dispatched_ids.add(event.event_id)
         return False
 
     def _check_chain_depth(self, event: Event) -> bool:

@@ -390,6 +390,11 @@ class Watchdog:
 
     def _check_bus_health(self) -> None:
         """检查Event Bus是否在运行（心跳文件或进程检测）。"""
+        bus_mode = self.config.get("bus_mode", "cron")
+        if bus_mode == "cron":
+            logger.debug("bus_mode=cron, skipping BUS_DOWN check")
+            return
+
         # 方式1: 心跳文件
         hb_file = self.events_dir / self.config["heartbeat_file"]
         if hb_file.exists():

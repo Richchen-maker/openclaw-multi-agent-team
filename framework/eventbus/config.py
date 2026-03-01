@@ -25,6 +25,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "dispatch_timeout": 300,       # sub-agent超时秒数
     "dispatch_mode": "default",    # "default" (print) 或 "live" (spawn)
     "daemon_pid_file": "eventbus.pid",  # PID文件名（相对于events/.watchdog/）
+    "bus_mode": "cron",            # "cron" (skip BUS_DOWN check) 或 "daemon"
 }
 
 

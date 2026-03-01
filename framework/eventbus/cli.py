@@ -178,7 +178,10 @@ def main(argv: list[str] | None = None) -> int:
                 os.setsid()
                 sys.stdin.close()
 
-        bus.run_loop(interval=args.interval)
+        if args.interval is not None and args.interval == 0:
+            bus.run_once()
+        else:
+            bus.run_loop(interval=args.interval)
         return 0
 
     elif args.command == "status":
@@ -382,10 +385,11 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def cmd_trace(args, workspace: Path):
-    """可视化事件链路"""
+    """可视化事件链路 — 按event_id前缀 + body关键词 + chain_depth排序"""
     prefix = args.prefix
     events_dir = workspace / "events"
-    all_events = []
+    all_events: list[tuple[Event, str]] = []
+    seen_ids: set[str] = set()
 
     status_emoji = {"pending": "⏳", "processing": "🔄", "resolved": "✅", "failed": "❌"}
 
@@ -396,7 +400,15 @@ def cmd_trace(args, workspace: Path):
         for f in dir_path.glob("*.md"):
             try:
                 event = Event.from_file(f)
+                matched = False
+                # 1. event_id前缀匹配
                 if prefix.lower() in event.event_id.lower():
+                    matched = True
+                # 2. body关键词匹配
+                elif prefix.lower() in (event.body or "").lower():
+                    matched = True
+                if matched and event.event_id not in seen_ids:
+                    seen_ids.add(event.event_id)
                     all_events.append((event, status_dir))
             except Exception:
                 continue
@@ -405,6 +417,7 @@ def cmd_trace(args, workspace: Path):
         print(f"No events found matching '{prefix}'")
         return
 
+    # 3. 按chain_depth排序
     all_events.sort(key=lambda x: x[0].chain_depth)
 
     print(f"\n{'━' * 50}")
