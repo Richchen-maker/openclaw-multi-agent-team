@@ -1,0 +1,10 @@
+team: intelligence-team
+description: "竞争情报监控、竞品分析、市场预警"
+capabilities:
+  - event_type: MARKET_SIGNAL
+    modes: [B]
+    description: "深入分析市场信号，输出竞争策略"
+    priority: 1
+  - event_type: DATA_READY
+    modes: [A]
+    description: "消费采集数据，更新竞品画像"

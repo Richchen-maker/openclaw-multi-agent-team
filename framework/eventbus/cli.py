@@ -102,6 +102,22 @@ def _build_parser() -> argparse.ArgumentParser:
     cost_p.add_argument("--set", nargs=2, metavar=("CHAIN_ID", "BUDGET"), default=None,
                         help="Set budget: CHAIN_ID MAX_TOKENS")
 
+    # evolve
+    evolve_p = sub.add_parser("evolve", help="Extract patterns from a resolved chain")
+    evolve_p.add_argument("chain_prefix", help="Chain ID prefix to evolve from")
+
+    # patterns
+    sub.add_parser("patterns", help="Show all evolved patterns")
+
+    # shortcut
+    shortcut_p = sub.add_parser("shortcut", help="Find shortcut for event type")
+    shortcut_p.add_argument("event_type", help="Event type to check")
+    shortcut_p.add_argument("context", help="Context string for keyword matching")
+
+    # scheduler
+    sched_p = sub.add_parser("scheduler", help="Chain scheduler status")
+    sched_p.add_argument("--chains", action="store_true", help="List all chains")
+
     return parser
 
 
@@ -309,6 +325,33 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"  {domain}: {count}")
             return 0
 
+    elif args.command == "evolve":
+        from .evolver import Evolver
+        ev = Evolver(workspace)
+        patterns = ev.evolve_after_chain(args.chain_prefix)
+        print(f"Extracted {len(patterns)} pattern(s) from chain '{args.chain_prefix}'")
+        for p in patterns:
+            print(f"  {p.pattern_id}: {p.event_type} conf={p.confidence:.2f} keywords={p.context_keywords[:5]}")
+        return 0
+
+    elif args.command == "patterns":
+        from .evolver import Evolver
+        ev = Evolver(workspace)
+        print(ev.format_patterns())
+        return 0
+
+    elif args.command == "shortcut":
+        from .evolver import Evolver
+        ev = Evolver(workspace)
+        pattern = ev.find_shortcut(args.event_type, args.context)
+        if pattern:
+            print(f"[SHORTCUT] Found: {pattern.pattern_id} conf={pattern.confidence:.2f}")
+            print(f"  Solution: {pattern.solution_summary[:200]}")
+            print(f"  Skip: {pattern.chain_shortcut.get('skip_event_types', [])}")
+        else:
+            print(f"No shortcut found for {args.event_type}")
+        return 0
+
     elif args.command == "cost":
         from .cost_controller import CostController
         cc = CostController(workspace)
@@ -319,6 +362,20 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Budget set: {chain_id} = {int(budget_str):,} tokens")
         else:
             print(cc.format_report())
+        return 0
+
+    elif args.command == "scheduler":
+        from .scheduler import Scheduler
+        sched = Scheduler(workspace, config)
+
+        if args.chains:
+            if not sched.chains:
+                print("No chains registered.")
+            else:
+                for cid, c in sched.chains.items():
+                    print(f"  {c.status:10s} {cid} steps={c.current_step} priority={c.priority}")
+        else:
+            print(sched.format_status())
         return 0
 
     return 1

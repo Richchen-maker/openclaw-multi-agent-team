@@ -17,6 +17,7 @@ from .config import load_config, DEFAULT_CONFIG
 from .event import Event
 from .router import Router, DEFAULT_ROUTES
 from .dispatcher import Dispatcher
+from .evolver import Evolver
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +56,9 @@ class EventBus:
 
         # 去重追踪: (source_team, event_type) → last_timestamp
         self._dedup_cache: dict[tuple[str, str], float] = {}
+
+        # 自进化引擎
+        self.evolver = Evolver(self.workspace_dir)
 
     @staticmethod
     def _check_openclaw_available() -> bool:
@@ -203,6 +207,15 @@ class EventBus:
         events = self._sort_by_priority(events)
         processed = 0
         for event in events:
+            # Shortcut: 查知识库是否有可复用模式
+            shortcut = self.evolver.find_shortcut(event.event_type, event.body)
+            if shortcut:
+                logger.info("[SHORTCUT] Skipping %s, using pattern %s (conf=%.2f)",
+                            event.event_type, shortcut.pattern_id, shortcut.confidence)
+                # 注入方案到事件body，跳过中间步骤
+                event.body = f"[AUTO-SHORTCUT from {shortcut.pattern_id}]\n{shortcut.solution_summary}\n\n---\nOriginal: {event.body}"
+                self.evolver.record_usage(shortcut.pattern_id, success=True)
+
             route_info = self.route(event)
             if route_info is None:
                 logger.warning("No route for %s, skipping", event.event_type)
