@@ -29,6 +29,17 @@ import yaml
 
 from .event import Event
 
+# V2 modules — graceful fallback if not yet available
+try:
+    from .analyzer import EventAnalyzer
+    from .profiler import TeamProfiler
+    from .predictor import Predictor
+    from .history import HistoryTracker
+    from .recovery import RecoveryEngine, RecoveryResult, Strategy
+    _V2_AVAILABLE = True
+except ImportError:
+    _V2_AVAILABLE = False
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -55,6 +66,11 @@ class WatchdogReport:
     alerts: list[Alert]
     status: str  # HEALTHY | WARNING | CRITICAL
     events_summary: dict[str, int] = field(default_factory=dict)
+    # V2 fields
+    predictions: list[Any] = field(default_factory=list)
+    team_scores: dict[str, Any] = field(default_factory=dict)
+    recoveries: list[Any] = field(default_factory=list)
+    system_score: int = 100
 
 
 # ---------------------------------------------------------------------------
@@ -92,7 +108,7 @@ class Watchdog:
     # ------------------------------------------------------------------
 
     def check_all(self) -> WatchdogReport:
-        """运行所有检查，返回报告。"""
+        """运行所有检查，返回报告。V2增加分析+预测+评分。"""
         self.alerts = []
         self._check_stale_pending()
         self._check_stale_processing()
@@ -101,16 +117,67 @@ class Watchdog:
         self._check_bus_health()
 
         summary = self._events_summary()
+        predictions: list[Any] = []
+        team_scores: dict[str, Any] = {}
+        system_score = 100
+
+        # V2: 深度分析 + 预测 + 评分
+        if _V2_AVAILABLE:
+            try:
+                # Analyzer: 对每个告警做根因分析
+                analyzer = EventAnalyzer(self.workspace_dir)
+                for alert in self.alerts:
+                    if alert.event_id:
+                        event_path = self._find_event_file(alert.event_id)
+                        if event_path:
+                            analysis = analyzer.analyze(event_path)
+                            alert.recovery_action = f"[V2] {analysis.root_cause.value}: {analysis.recommendation}"
+
+                # Predictor: 预测性告警
+                predictor = Predictor(self.workspace_dir)
+                predictions = predictor.predict()
+                for pred in predictions:
+                    if pred.get("severity") == "CRITICAL":
+                        self.alerts.append(Alert(
+                            level="WARNING",
+                            check_type="PREDICTION",
+                            event_id="",
+                            message=f"[Predicted] {pred.get('message', '')}",
+                            auto_recoverable=False,
+                            recovery_action=pred.get("recommendation", "Monitor closely"),
+                        ))
+
+                # Profiler: 团队健康评分
+                profiler = TeamProfiler(self.workspace_dir)
+                team_scores = profiler.score_all()
+                scores = [v.get("score", 100) if isinstance(v, dict) else v for v in team_scores.values()]
+                system_score = int(sum(scores) / len(scores)) if scores else 100
+            except Exception as e:
+                logger.warning("V2 modules error (falling back to V1): %s", e)
+
         status = "HEALTHY"
         if self.alerts:
             status = "CRITICAL" if any(a.level == "CRITICAL" for a in self.alerts) else "WARNING"
 
-        return WatchdogReport(
+        report = WatchdogReport(
             timestamp=datetime.now(timezone.utc),
             alerts=list(self.alerts),
             status=status,
             events_summary=summary,
+            predictions=predictions,
+            team_scores=team_scores,
+            system_score=system_score,
         )
+
+        # V2: 记录历史
+        if _V2_AVAILABLE:
+            try:
+                history = HistoryTracker(self.workspace_dir)
+                history.record(report)
+            except Exception as e:
+                logger.warning("History recording failed: %s", e)
+
+        return report
 
     def auto_recover(self, alert: Alert) -> bool:
         """尝试自动修复单条告警。返回是否成功。"""
@@ -129,15 +196,42 @@ class Watchdog:
         return False
 
     def auto_recover_all(self, report: WatchdogReport) -> list[tuple[Alert, bool]]:
-        """对报告中所有可修复的告警执行自动修复。"""
+        """对报告中所有可修复的告警执行自动修复。V2使用智能修复引擎。"""
         if not self.config.get("auto_recover", True):
             return []
         results: list[tuple[Alert, bool]] = []
-        for alert in report.alerts:
-            if alert.auto_recoverable:
-                ok = self.auto_recover(alert)
-                results.append((alert, ok))
-                logger.info("Auto-recover %s [%s]: %s", alert.check_type, alert.event_id[:8] if alert.event_id else "-", "OK" if ok else "FAILED")
+
+        if _V2_AVAILABLE:
+            engine = RecoveryEngine(self.workspace_dir, self.config)
+            analyzer = EventAnalyzer(self.workspace_dir)
+            for alert in report.alerts:
+                if not alert.auto_recoverable:
+                    continue
+                try:
+                    event_path = self._find_event_file(alert.event_id) if alert.event_id else None
+                    if event_path:
+                        analysis = analyzer.analyze(event_path)
+                        strategy = engine.select_strategy(analysis)
+                        result = engine.execute(strategy, event_path, analysis)
+                        report.recoveries.append(result)
+                        results.append((alert, result.success))
+                        logger.info("V2 recover %s [%s] strategy=%s: %s",
+                                    alert.check_type, alert.event_id[:8] if alert.event_id else "-",
+                                    strategy.value, "OK" if result.success else "FAILED")
+                    else:
+                        # No file found, fall back to V1
+                        ok = self.auto_recover(alert)
+                        results.append((alert, ok))
+                except Exception as e:
+                    logger.warning("V2 recovery failed for %s, falling back to V1: %s", alert.event_id[:8] if alert.event_id else "-", e)
+                    ok = self.auto_recover(alert)
+                    results.append((alert, ok))
+        else:
+            for alert in report.alerts:
+                if alert.auto_recoverable:
+                    ok = self.auto_recover(alert)
+                    results.append((alert, ok))
+                    logger.info("Auto-recover %s [%s]: %s", alert.check_type, alert.event_id[:8] if alert.event_id else "-", "OK" if ok else "FAILED")
         return results
 
     def format_report(self, report: WatchdogReport) -> str:
@@ -457,8 +551,114 @@ class Watchdog:
         return False
 
     # ------------------------------------------------------------------
+    # V2: Dashboard
+    # ------------------------------------------------------------------
+
+    def format_dashboard(self, report: WatchdogReport) -> str:
+        """格式化健康仪表盘输出。"""
+        lines: list[str] = []
+        bar_full, bar_empty = "■", "□"
+
+        def score_bar(score: int, width: int = 10) -> str:
+            filled = max(0, min(width, round(score / 100 * width)))
+            return bar_full * filled + bar_empty * (width - filled)
+
+        lines.append("━━━━━ EventBus Health Dashboard ━━━━━")
+        lines.append(f"System Score: {report.system_score}/100 {score_bar(report.system_score)}")
+        lines.append("")
+
+        # Team Health
+        if report.team_scores:
+            lines.append("Team Health:")
+            for team, info in report.team_scores.items():
+                if isinstance(info, dict):
+                    score = info.get("score", 0)
+                    avg_t = info.get("avg_duration", 0)
+                    succ = info.get("success_rate", 0)
+                else:
+                    score, avg_t, succ = int(info), 0, 0
+                lines.append(f"  {team:24s} {score:3d} {score_bar(score)}  avg {int(avg_t)}s   success {int(succ * 100) if succ <= 1 else int(succ)}%")
+        else:
+            lines.append("Team Health: (no data)")
+        lines.append("")
+
+        # Pipeline
+        s = report.events_summary
+        total = sum(s.values())
+        lines.append("Pipeline (24h):")
+        lines.append(f"  Total: {total} | Success: {s.get('resolved', 0)} | Failed: {s.get('failed', 0)} | Pending: {s.get('pending', 0)}")
+        lines.append("")
+
+        # Predictions
+        lines.append("Predictions:")
+        if report.predictions:
+            for p in report.predictions:
+                msg = p.get("message", str(p)) if isinstance(p, dict) else str(p)
+                lines.append(f"  ⚠ {msg}")
+        else:
+            lines.append("  (none)")
+        lines.append("")
+
+        # Recoveries
+        lines.append("Last 5 Recoveries:")
+        recoveries = report.recoveries[-5:] if report.recoveries else []
+        if recoveries:
+            for r in recoveries:
+                if hasattr(r, "strategy"):
+                    ts = datetime.now(timezone.utc).strftime("%H:%M")
+                    tag = "success" if r.success else "failed"
+                    lines.append(f"  {ts} {r.strategy.value} {r.event_id[:8]} → {tag}")
+                else:
+                    lines.append(f"  {r}")
+        else:
+            lines.append("  (none)")
+        lines.append("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        return "\n".join(lines)
+
+    def format_history(self, hours: int = 24) -> str:
+        """格式化历史记录输出。"""
+        if not _V2_AVAILABLE:
+            return "History module not available."
+        try:
+            history = HistoryTracker(self.workspace_dir)
+            records = history.query(hours=hours)
+            if not records:
+                return f"No watchdog history in the last {hours}h."
+            lines = [f"Watchdog History (last {hours}h): {len(records)} runs"]
+            for rec in records[-20:]:  # last 20
+                ts = rec.get("timestamp", "?")
+                status = rec.get("status", "?")
+                alerts_n = rec.get("alert_count", 0)
+                score = rec.get("system_score", "?")
+                icon = {"HEALTHY": "✅", "WARNING": "⚠️", "CRITICAL": "🔴"}.get(status, "❓")
+                lines.append(f"  {ts} {icon} {status} alerts={alerts_n} score={score}")
+            return "\n".join(lines)
+        except Exception as e:
+            return f"History query failed: {e}"
+
+    # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
+
+    def _find_event_file(self, event_id: str) -> Path | None:
+        """在所有目录中查找事件文件。"""
+        if not event_id:
+            return None
+        for d in ("processing", "pending", "resolved", "failed"):
+            dirpath = self.events_dir / d
+            if not dirpath.exists():
+                continue
+            for f in dirpath.glob("*.md"):
+                if event_id in f.stem:
+                    return f
+                # Also try parsing
+                try:
+                    ev = Event.from_file(f)
+                    if ev.event_id == event_id:
+                        return f
+                except Exception:
+                    pass
+        return None
 
     def _load_events(self, directory: str) -> list[tuple[Event, Path]]:
         """加载指定目录中的所有事件，跳过解析失败的文件。"""

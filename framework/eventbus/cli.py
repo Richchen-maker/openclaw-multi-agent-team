@@ -53,9 +53,12 @@ def _build_parser() -> argparse.ArgumentParser:
     route_p.add_argument("event_type", help="Event type to look up")
 
     # watchdog
-    wd_p = sub.add_parser("watchdog", help="Run watchdog health checks")
-    wd_p.add_argument("--fix", action="store_true", help="Auto-recover issues")
-    wd_p.add_argument("--loop", action="store_true", help="Continuous monitoring (every 2 min)")
+    wd_p = sub.add_parser("watchdog", help="Run watchdog health checks (V2)")
+    wd_p.add_argument("--fix", action="store_true", help="Auto-recover issues with smart recovery engine")
+    wd_p.add_argument("--dashboard", action="store_true", help="Show health dashboard")
+    wd_p.add_argument("--history", nargs="?", const="24h", default=None, metavar="PERIOD",
+                       help="Show history (24h, 7d, etc.)")
+    wd_p.add_argument("--loop", action="store_true", help="Continuous monitoring")
     wd_p.add_argument("--interval", type=int, default=120, help="Loop interval in seconds")
 
     return parser
@@ -122,8 +125,28 @@ def main(argv: list[str] | None = None) -> int:
         if args.loop:
             watchdog_loop(workspace, interval=args.interval)
             return 0
+
         wd = Watchdog(workspace)
+
+        # --history
+        if args.history is not None:
+            period = args.history
+            hours = 24
+            if period.endswith("d"):
+                hours = int(period[:-1]) * 24
+            elif period.endswith("h"):
+                hours = int(period[:-1])
+            print(wd.format_history(hours))
+            return 0
+
         report = wd.check_all()
+
+        # --dashboard
+        if args.dashboard:
+            print(wd.format_dashboard(report))
+            return 0 if report.status == "HEALTHY" else 1
+
+        # Default: V2 report
         print(wd.format_report(report))
         if args.fix and report.status != "HEALTHY":
             results = wd.auto_recover_all(report)
