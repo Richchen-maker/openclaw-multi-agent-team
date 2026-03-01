@@ -1,362 +1,191 @@
-# Multi-Agent Team Architecture
+# Architecture — OpenClaw Multi-Agent Team Framework
 
-> Generic framework for building specialized AI teams in OpenClaw.
+## 整体架构
 
+```
+openclaw-multi-agent-team/
+├── framework/                    # 框架层（domain-agnostic）
+│   ├── eventbus/                 # EventBus Runtime Engine (21 modules, 4500+ lines Python)
+│   │   ├── bus.py                # 核心：scan → route → dispatch 循环
+│   │   ├── dispatcher.py         # Dispatcher抽象 + CronDispatcher + OpenClawDispatcher
+│   │   ├── watchdog.py           # V3监控：5种检查 + 自动修复 + cron dispatch
+│   │   ├── evolver.py            # 团队自进化：extract → crystallize → shortcut
+│   │   ├── scheduler.py          # 多链路并行调度 + 团队锁
+│   │   ├── registry.py           # 动态能力注册：capabilities.yaml → 路由表
+│   │   ├── databus.py            # 数据管道：data_refs + schema验证
+│   │   ├── memory_bridge.py      # 跨团队知识共享
+│   │   ├── cost_controller.py    # 链路预算：severity→model映射 + token限额
+│   │   ├── templates.py          # 标准化事件写回模板（shell + Python）
+│   │   ├── router.py             # 双轨路由：静态DEFAULT_ROUTES + 动态Registry
+│   │   ├── event.py              # Event数据模型（YAML frontmatter解析）
+│   │   ├── config.py             # 配置管理：defaults + eventbus.yaml merge
+│   │   ├── cli.py                # CLI入口：scan/emit/run/status/route/watchdog/trace/...
+│   │   ├── analyzer.py           # V2事件分析器
+│   │   ├── profiler.py           # V2团队画像
+│   │   ├── predictor.py          # V2预测器
+│   │   ├── history.py            # V2历史追踪
+│   │   ├── recovery.py           # V2智能恢复引擎
+│   │   ├── __init__.py           # Package init
+│   │   └── __main__.py           # python -m eventbus 入口
+│   ├── ARCHITECTURE.md           # 本文档
+│   ├── ORCHESTRATOR.md           # CONDUCTOR执行协议
+│   ├── EVENT-BUS.md              # Event Bus协议 + Runtime详解
+│   ├── TEAM-ROUTER.md            # 多团队路由
+│   ├── TOOL-BOOTSTRAP.md         # Sub-agent工具注入
+│   └── BLACKBOARD-SPEC.md        # Blackboard读写规则
+├── examples/                     # 示例团队（可直接部署）
+│   ├── ecommerce-team/           # 🛒 电商（6 roles）
+│   ├── data-collection-team/     # 📡 数据采集（6 roles）
+│   ├── arc-team/                 # 🛡️ 安全攻防（6 roles, 54 weapons）
+│   ├── content-team/             # 📝 内容生产（4 roles）
+│   └── intelligence-team/        # 🔍 情报分析
+├── events/                       # 事件状态机（运行时生成）
+│   ├── pending/                  # ⏳ 待处理
+│   ├── processing/               # 🔄 处理中
+│   ├── resolved/                 # ✅ 已完成
+│   ├── failed/                   # ❌ 失败
+│   └── .watchdog/                # Watchdog状态 + patterns + budgets + scheduler
+├── knowledge/                    # MemoryBridge共享知识库
+│   └── {domain}/{topic}.md
+├── eventbus.yaml                 # Event Bus配置
+└── docs/                         # 用户文档
+```
+
+## Event Lifecycle — 事件状态机
+
+```
+           emit / sub-agent写回
+                 │
+                 ▼
+            ┌─────────┐
+            │ pending  │  ← YAML文件落入 events/pending/
+            └────┬─────┘
+                 │ EventBus.scan() + priority排序(CRITICAL first)
+                 │ Router.resolve(event_type) → target_team + mode
+                 ▼
+           ┌──────────┐
+           │processing │  ← 文件移入 events/processing/
+           └─────┬─────┘
+                 │ Dispatcher.execute() → sub-agent执行
+                 │
+          ┌──────┴──────┐
+          ▼             ▼
+     ┌─────────┐  ┌─────────┐
+     │resolved │  │ failed  │
+     └─────────┘  └─────────┘
+          │
+          ▼
+     Evolver.extract_from_chain()  → 模式提取 → shortcut
+     MemoryBridge.store()          → 知识沉淀
+```
+
+**事件文件格式**：YAML frontmatter + Markdown body
+
+```yaml
 ---
-
-## Design Philosophy
-
-### Pipeline vs Flywheel
-
-| Dimension | Pipeline | Flywheel |
-|-----------|----------|----------|
-| Topology | Linear (Phase 1→2→3) | **Closed-loop** (data-driven iteration) |
-| Time Scale | One-shot execution | **Continuous operation**, periodic decisions |
-| Input | Fixed specification | **Dynamic signals** |
-| Output | Document (final state) | Actions (continuous optimization) |
-
-**Choose Flywheel when your domain requires iteration.** Choose Pipeline for one-shot document generation.
-
+event_id: 'abc12345-def67890'
+event_type: 'DATA_GAP'
+severity: 'HIGH'
+source_team: 'ecommerce-team'
+chain_depth: 0
+chain_id: 'chain-xxx'
+parent_event_id: ''
+metadata:
+  source_role: 'RADAR'
 ---
-
-## Flywheel Architecture
-
-```
-                    ┌─────────────┐
-                    │  CONDUCTOR   │
-                    │ (Orchestrator)│
-                    └──────┬──────┘
-                           │ dispatch / arbitrate
-            ┌──────────────┼──────────────┐
-            ▼              ▼              ▼
-    ┌───────────┐  ┌───────────┐  ┌───────────┐
-    │ Analysts  │  │ Creators  │  │ Monitors  │
-    │ (Research)│→ │ (Content) │→ │  (Data)   │
-    └─────┬─────┘  └─────┬─────┘  └─────┬─────┘
-          │              │              │
-          └──────────────┼──────────────┘
-                         ▼
-                  ┌─────────────┐
-                  │  BLACKBOARD  │
-                  │ (Shared State)│
-                  └─────────────┘
-                         ▲
-                    Feedback Loop ↺
+需要补充蓝牙耳机品类的供应商价格数据...
 ```
 
----
+## Dispatch机制 — 三种模式
 
-## Role Types
+| 模式 | dispatch_mode | 行为 |
+|------|--------------|------|
+| **Default** | `default` | 打印shell命令到stdout（dry-run/CI） |
+| **Cron** | `cron` | 写DispatchRequest YAML到 `events/.dispatch/` → Watchdog cron消费 |
+| **Live** | `live` | OpenClawDispatcher直接spawn sub-agent |
 
-Every team needs some combination of these archetypes:
-
-### 1. CONDUCTOR (Orchestrator)
-- **Not a sub-agent** — this is the lead agent (your main OpenClaw session)
-- Decomposes tasks, dispatches sub-agents, arbitrates conflicts
-- Owns quality gates and conflict resolution
-- Only entity with write access to DECISIONS in the blackboard
-
-### 2. Analyst Roles (Research & Intelligence)
-- Gather signals, identify trends, assess feasibility
-- Examples: Market Researcher, Competitive Analyst, Technical Assessor
-- Output: Reports with confidence-graded findings
-
-### 3. Creator Roles (Content & Strategy)
-- Transform insights into actionable assets
-- Examples: Content Creator, Pricing Strategist, Campaign Planner
-- Output: Ready-to-execute plans and materials
-
-### 4. Monitor Roles (Data & Alerting)
-- Track metrics, detect anomalies, trigger responses
-- Examples: Performance Monitor, Risk Tracker, Quality Auditor
-- Output: Dashboards, alerts, attribution analysis
-
-### 5. Decision Roles (Synthesis & Judgment)
-- Integrate all inputs into final recommendations
-- Examples: Decision Oracle, Strategic Advisor
-- Output: Go/No-Go decisions with kill criteria
-
----
-
-## Operating Modes
-
-### Mode A: Full Pipeline
-Best for: New initiatives, comprehensive evaluation
-
+**CronDispatcher流程**：
 ```
-CONDUCTOR receives directive
-    │
-    ├── [Parallel] Analyst roles (research + intelligence)
-    │         ↓ outputs merged
-    │     CONDUCTOR arbitrates conflicts
-    │         ↓
-    ├── [Parallel] Creator roles (content + strategy)
-    │         ↓ outputs merged
-    │     CONDUCTOR reviews consistency
-    │         ↓
-    └── Decision role: final recommendation → user approval
-              ↓ after execution
-          Monitor role: continuous tracking → feedback loop
+EventBus.process_event()
+  → CronDispatcher.execute()
+    → 写 DispatchRequest YAML 到 events/.dispatch/
+      → Watchdog cron定时扫描 .dispatch/
+        → 读取pending request → openclaw spawn执行
+          → sub-agent完成 → 写回事件到 events/pending/
 ```
 
-### Mode B: Event-Driven
-Best for: Ongoing operations, anomaly response
+## 路由 — 双轨制
 
-```
-Monitor detects anomaly
-    │
-    CONDUCTOR starts diagnosis:
-    ├── Targeted analyst roles
-    ├── Relevant creator roles
-    │         ↓
-    Decision role: attribution + recommendation → user
-```
-
-### Mode C: Reactive
-Best for: Competitor moves, market shifts, urgent situations
-
-```
-Signal detected
-    │
-    CONDUCTOR triggers emergency response:
-    ├── Analyst + Strategy roles (parallel)
-    │         ↓
-    Decision role: quick recommendation → user
+**静态路由**（router.py DEFAULT_ROUTES）：
+```python
+DEFAULT_ROUTES = {
+    "DATA_GAP":          {"target_team": "data-collection-team", "target_mode": "A"},
+    "CRAWL_BLOCKED":     {"target_team": "arc-team",             "target_mode": "C"},
+    "DATA_READY":        {"target_team": "ecommerce-team",       "target_mode": "A"},
+    "SECURITY_INCIDENT": {"target_team": "arc-team",             "target_mode": "C"},
+    ...
+}
 ```
 
----
-
-## Blackboard System
-
-All agents communicate through the blackboard — **never directly**.
-
+**动态路由**（Registry扫描 capabilities.yaml）：
 ```
-blackboard/
-├── TASKS.md          # Current task state machine
-├── DECISIONS.md      # Confirmed decisions (append-only)
-├── SIGNALS.md        # Analyst-written market/domain signals
-├── DATA.md           # Shared domain data (specs, costs, params)
-├── COMPETITORS.md    # Competitive landscape
-├── METRICS.md        # Key metric snapshots
-└── ALERTS.md         # Alert queue
+Registry.scan()
+  → 遍历 workspace下所有 *-team/ + examples/*-team/ + teams/*
+    → 解析每个团队的 capabilities.yaml
+      → 构建 event_type → {target_team, target_mode} 映射
+        → priority高的优先
 ```
 
-### Write Rules
-- Each agent writes only to its responsibility domain
-- All writes must include: timestamp + data source annotation
-- DECISIONS.md: only CONDUCTOR and Decision roles have write access
-- Conflict detection: if two agents write to the same field, CONDUCTOR arbitrates
+**优先级**：显式传入routes > 动态Registry > 静态DEFAULT_ROUTES
 
----
+## 安全机制
 
-## Conflict Arbitration Protocol
+| 机制 | 实现 | 说明 |
+|------|------|------|
+| **chain_depth限制** | bus.py, 默认max=5 | 防止事件链无限递归 |
+| **去重** | `_dispatched_ids` set + dedup_window | 同一事件不重复dispatch |
+| **处理超时** | processing_timeout=1800s | 卡死事件自动标记failed |
+| **成本控制** | CostController per-chain budget | 超预算暂停链路 |
+| **事件不可变** | 文件写入后只移动不修改 | 审计友好 |
+| **Watchdog** | 5种检查 + 自动修复 | STALE_PENDING/STALE_PROCESSING/CHAIN_BROKEN/FORMAT_ERROR/BUS_DOWN |
 
-When two agents disagree, CONDUCTOR resolves by priority:
+## 团队接入 — 零代码
 
-1. **Quantified data** > qualitative judgment
-2. **Recent data** (≤3 months) > historical data
-3. **Official/platform data** > third-party reports > inference
-4. **Multi-source consensus** > single source
-5. **When uncertain** → conservative choice (lower risk)
-
-All arbitration decisions are recorded in `DECISIONS.md` with reasoning.
-
----
-
-## Quality Gates
-
-Every sub-agent output must pass CONDUCTOR review:
-
+1. 创建团队目录（如 `examples/my-team/`）
+2. 放入 `capabilities.yaml`：
+```yaml
+team: my-team
+description: "My custom team"
+capabilities:
+  - event_type: MY_EVENT
+    modes: [A, B]
+    priority: 10
 ```
-□ One-sentence conclusion present?
-□ Confidence levels tagged (HIGH/MEDIUM/LOW)?
-□ Red-team self-check completed?
-□ Data sources annotated?
-□ Conflicts with prior reports identified?
-□ Blockers flagged?
-```
+3. Registry自动扫描发现 → 事件自动路由到该团队
+4. 无需修改任何框架代码
 
-Failed → agent must fix in-session (no re-spawn needed).
+## 核心模块清单（21个Python文件，4500+ lines）
 
----
-
-## Sub-Agent Spawning Protocol
-
-Critical: sub-agents **do not inherit** the lead agent's skills or workspace files. Every sub-agent task prompt must include:
-
-```
-[1] TOOL-BOOTSTRAP.md (full text — tool capabilities + output rules)
-[2] Role template (full text — with {{TARGET}} replaced)
-[3] Prior role outputs (summaries of dependent steps)
-[4] Blackboard path for output
-```
-
-**Pre-spawn checklist:**
-```
-□ TOOL-BOOTSTRAP.md injected in full
-□ Role template injected in full (including red-team / confidence sections)
-□ {{TARGET}} placeholder replaced
-□ Prior outputs injected (if dependencies exist)
-□ Output file path specified
-```
-
----
-
-## Multi-Team Architecture
-
-When the workspace contains multiple specialist teams, they coexist as independent flywheels sharing a single CONDUCTOR:
-
-```
-                         ┌──────────────────┐
-                         │    CONDUCTOR      │
-                         │ (Global Router &  │
-                         │   Arbitrator)     │
-                         └────────┬─────────┘
-                    ┌─────────────┼─────────────┐
-                    ▼             ▼             ▼
-          ┌─────────────┐ ┌─────────────┐ ┌─────────────┐
-          │  Team A      │ │  Team B      │ │  Team C      │
-          │ (ecommerce)  │ │ (content)    │ │ (investment) │
-          │              │ │              │ │              │
-          │ ┌─Analysts─┐ │ │ ┌─Creators─┐ │ │ ┌─Analysts┐ │
-          │ │ Scouts    │ │ │ │ Writers  │ │ │ │ Analysts │ │
-          │ │ Strategist│ │ │ │ Reviewer │ │ │ │ Drafter  │ │
-          │ └───────────┘ │ │ └──────────┘ │ │ └──────────┘ │
-          │  blackboard/  │ │  blackboard/  │ │  blackboard/  │
-          └───────┬───────┘ └───────┬───────┘ └───────┬───────┘
-                  │                 │                 │
-                  └────────────────┼────────────────┘
-                                   ▼
-                     ┌──────────────────────┐
-                     │  CROSS-TEAM-HANDOFF   │
-                     │  (shared blackboard)  │
-                     └──────────────────────┘
-```
-
-**Key properties:**
-- Each team is an **independent flywheel** with its own roles, blackboard, and ORCHESTRATOR.md
-- CONDUCTOR is the **only shared component** — it routes, arbitrates, and manages cross-team handoffs
-- Teams **never communicate directly** — all cross-team data flows through `blackboard/CROSS-TEAM-HANDOFF.md`
-- Adding a new team = adding a directory with the right structure — zero changes to existing teams
-
-See [TEAM-ROUTER.md](./TEAM-ROUTER.md) for routing rules, collaboration modes, and conflict resolution.
-
----
-
-## Cross-Team Auto-Collaboration (MANDATORY)
-
-> **Every team built with this framework MUST integrate the Event Bus + Watchdog system.**
-> This is not optional — it is the core capability that makes multi-team collaboration work.
-
-### Architecture
-
-```
-┌──────────────────────────────────────────────────────────┐
-│                      WATCHDOG                            │
-│          (Every 2min: detect stalls, auto-recover)       │
-│                                                          │
-│  Checks: STALE_PENDING | STALE_PROCESSING | CHAIN_BROKEN │
-│          FORMAT_ERROR  | BUS_DOWN                        │
-│  Recovery: auto-dispatch | auto-retry | re-emit          │
-│  Alert: CRITICAL → notify user | WARNING → log only     │
-└──────────────────────┬───────────────────────────────────┘
-                       │ monitors
-┌──────────────────────▼───────────────────────────────────┐
-│                    EVENT BUS                              │
-│           (Scan → Route → Dispatch → Resolve)            │
-│                                                          │
-│  Events:  DATA_GAP | CRAWL_BLOCKED | DEFENSE_REPORT      │
-│           DATA_READY | ANOMALY | MARKET_SIGNAL           │
-│           CRAWL_STRATEGY | SECURITY_INCIDENT             │
-│                                                          │
-│  Lifecycle: pending/ → processing/ → resolved/ | failed/ │
-│  Safety: chain_depth ≤ 5 | dedup 60min | timeout 30min  │
-└──────────────────────┬───────────────────────────────────┘
-                       │ routes events between
-        ┌──────────────┼──────────────┐
-        ▼              ▼              ▼
-   ┌─────────┐   ┌─────────┐   ┌─────────┐
-   │ Team A  │   │ Team B  │   │ Team C  │
-   │         │──→│         │──→│         │
-   │         │←──│         │←──│         │
-   └─────────┘   └─────────┘   └─────────┘
-```
-
-### Integration Requirements for New Teams
-
-When creating a new team, you MUST:
-
-1. **Register event routes** — Add your team's event types to `framework/eventbus/router.py` or `eventbus.yaml`
-2. **Inject event awareness into ORCHESTRATOR.md** — Every team's orchestrator must include:
-   ```markdown
-   ## Cross-Team Event Protocol
-   
-   When executing tasks, if you encounter situations beyond this team's capability:
-   1. Data missing → write DATA_GAP event to events/pending/
-   2. Crawl blocked → write CRAWL_BLOCKED event
-   3. Task complete with results for another team → write DATA_READY event
-   
-   Before execution, check events/pending/ for events targeting this team.
-   Event file format: see framework/EVENT-BUS.md
-   ```
-3. **Define callback handlers** — Specify how your team receives results from other teams (which role resumes, where data is written)
-4. **Test the chain** — Before deploying, verify: emit event → Event Bus routes → your team receives → your team responds
-
-### Directory Structure (Required)
-
-```
-workspace/
-├── events/                    # MANDATORY — shared across all teams
-│   ├── pending/               # New events waiting for dispatch
-│   ├── processing/            # Events being handled by a team
-│   ├── resolved/              # Completed events
-│   └── failed/                # Failed events (needs attention)
-├── eventbus -> framework/eventbus/  # Symlink for CLI access
-├── run-eventbus.sh            # One-click Event Bus launcher
-├── team-alpha/                # Your teams
-├── team-beta/
-└── framework/
-    └── eventbus/              # Runtime code
-        ├── bus.py             # Core: scan → route → dispatch
-        ├── watchdog.py        # Monitoring + auto-recovery
-        ├── event.py           # Event data model
-        ├── router.py          # Routing table
-        ├── dispatcher.py      # Team dispatch
-        ├── cli.py             # CLI interface
-        └── config.py          # Configuration
-```
-
-### Monitoring (Required for Production)
-
-Set up two monitoring layers:
-
-1. **EventBus Watchdog cron** — Every 2 minutes, runs `python -m eventbus watchdog --fix`
-   - Auto-recovers stale events
-   - Alerts on chain breakage
-   - Notifies user on CRITICAL issues
-
-2. **System patrol cron** — Every 2 hours, checks overall system health
-   - Verifies Watchdog cron is running
-   - Checks disk/memory/CPU
-   - Reports untracked workspace files
-
-### Event Chain Safety Rules
-
-| Rule | Value | Purpose |
-|------|-------|---------|
-| Max chain depth | 5 | Prevent infinite loops (A→B→C→A→B...) |
-| Dedup window | 60 min | Same source+type won't re-trigger |
-| Pending timeout | 5 min | Watchdog auto-dispatches if Event Bus missed it |
-| Processing timeout | 30 min | Watchdog moves to failed + retries |
-| CRITICAL events | Always notify user | Human in the loop for emergencies |
-
----
-
-## Extending the Framework
-
-1. **Multi-domain**: Parameterize role templates by domain (ecommerce/research/content)
-2. **Cron integration**: Monitor roles can run on schedule for automated data collection
-3. **Memory system**: Write decision loop results to memory for cross-session context
-4. **Multi-project**: Partition blackboard by project/SKU for parallel management
-5. **User dashboard**: Decision role can push periodic summaries to chat
-6. **Cross-team collaboration**: Event Bus + Watchdog for automatic multi-team workflows (see above)
+| 模块 | 职责 | 优先级 |
+|------|------|--------|
+| bus.py | 核心引擎：scan → route → dispatch → move | P0 |
+| event.py | Event数据模型 + YAML解析 | P0 |
+| router.py | 双轨路由 | P0 |
+| dispatcher.py | 3种Dispatcher实现 | P0 |
+| config.py | 配置加载 + 默认值 | P0 |
+| cli.py | CLI入口（12+子命令） | P0 |
+| templates.py | 标准化事件写回 | P0 |
+| watchdog.py | V3监控 + 5种检查 + cron dispatch | P1 |
+| registry.py | 动态能力发现 | P1 |
+| databus.py | 数据引用 + schema验证 | P1 |
+| memory_bridge.py | 跨团队知识共享 | P1 |
+| cost_controller.py | 链路预算控制 | P1 |
+| scheduler.py | 多链路并行调度 | P1 |
+| evolver.py | 团队自进化引擎 | P2 |
+| analyzer.py | 事件模式分析 | P2 |
+| profiler.py | 团队性能画像 | P2 |
+| predictor.py | 预测器 | P2 |
+| history.py | 历史追踪 | P2 |
+| recovery.py | 智能恢复引擎 | P2 |
+| __init__.py | Package导出 | P3 |
+| __main__.py | Module入口 | P3 |

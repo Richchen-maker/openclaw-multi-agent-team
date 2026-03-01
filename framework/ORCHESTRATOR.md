@@ -1,215 +1,108 @@
-# CONDUCTOR Execution Protocol
+# ORCHESTRATOR Protocol — CONDUCTOR执行协议
 
-> The CONDUCTOR is the lead agent — your main OpenClaw session. This protocol defines how it dispatches and manages sub-agents.
+## CONDUCTOR职责
 
----
+CONDUCTOR是每支团队的领导Agent，负责：
 
-## Multi-Team Mode
+1. **任务分解** — 接收用户指令 → 拆解为可并行/串行的子任务
+2. **角色Dispatch** — 将子任务分配给合适的Role（sub-agent）
+3. **冲突仲裁** — 多个Role产出矛盾时，基于数据做裁决
+4. **质量门控** — 检查每个Role的产出是否满足标准
+5. **Event Bus交互** — 跨团队协作的事件发射和响应
 
-When multiple teams exist under `teams/`, CONDUCTOR operates as the **cross-team router and arbitrator**. See [TEAM-ROUTER.md](./TEAM-ROUTER.md) for the full protocol.
+## 执行模式
 
-**CONDUCTOR's multi-team responsibilities:**
+| Mode | 触发 | 流程 |
+|------|------|------|
+| **Full Pipeline** | "Run team on X" | CONDUCTOR → 并行dispatch → 串行阶段 → 最终决策 |
+| **Event-Driven** | 事件触发 | EventBus路由 → CONDUCTOR → 定向specialist → 事件写回 |
+| **Reactive** | 外部触发 | CONDUCTOR → 并行分析 → 快速决策 |
 
-1. **Team Discovery**: Scan `teams/*/ORCHESTRATOR.md` frontmatter to build a team registry (triggers, priority, capabilities)
-2. **Intent Routing**: Match user directives to the best team via keyword/intent scoring, or accept manual override ("启动XX团队")
-3. **Cross-Team Orchestration**: For tasks spanning multiple teams, decide Serial vs Parallel mode and manage handoffs via `blackboard/CROSS-TEAM-HANDOFF.md`
-4. **Conflict Prevention**: Ensure no two teams dispatch the same-named role concurrently on the same task
-5. **Final Authority**: All cross-team decisions are made by CONDUCTOR, not delegated to any single team's Decision role
+## Event Bus集成
 
-> In single-team mode, ignore this section — CONDUCTOR operates as described below.
+### 跨团队协作通过Event Bus实现
 
----
+旧方式（已废弃）：`blackboard/CROSS-TEAM-HANDOFF.md` 文件交接
+新方式：Event Bus事件驱动
 
-## Core Responsibilities
+**CONDUCTOR的Event Bus职责**：
 
-1. **Task Decomposition**: Break user directives into parallelizable sub-tasks
-2. **Dependency Scheduling**: Identify inter-task dependencies, maximize parallelism
-3. **Conflict Arbitration**: Resolve disagreements between roles
-4. **Quality Gates**: Review every role output before advancing to next phase
-5. **Status Updates**: Notify user at every key checkpoint
+1. **事件发射** — 团队发现需要其他团队协助时，写事件到 `events/pending/`
+2. **事件响应** — 收到路由来的事件时，分解并分配给内部Role
+3. **结果写回** — Role完成后，写回结果事件（含chain_id链路追踪）
+4. **链深度管理** — 每次写回 chain_depth + 1，防止无限递归
 
----
-
-## Dispatch Decision Tree
-
-```
-User directive arrives
-  │
-  ├── Comprehensive evaluation → Mode A: Full Pipeline
-  │     └── See Steps 0-4 below
-  │
-  ├── Check data / status review → Mode B: Event-Driven
-  │     └── Monitor → (by anomaly type) → targeted roles → Decision
-  │
-  ├── Competitor move / urgent → Mode C: Reactive
-  │     └── Analyst + Strategy (parallel) → Decision
-  │
-  └── Ambiguous → Ask user (but suggest options, don't just ask)
-```
-
----
-
-## Mode A: Full Pipeline — Execution Steps
-
-### Step 0: Initialize
-1. Parse user's target (category / product / domain)
-2. Initialize blackboard files (preserve history if exists, append new task)
-3. Update TASKS.md with current target
-4. Create output/ directory
-5. **Tool health check**: verify available tools, write results to `blackboard/TOOLKIT-STATUS.md`
-6. **Build task prompts** — Critical! Sub-agents don't inherit skills/workspace:
-   ```
-   [1] TOOL-BOOTSTRAP.md full text
-   [2] TOOLKIT-STATUS.md (health check results)
-   [3] Role template full text ({{TARGET}} replaced)
-        ⚠️ Must include: 🔴 Red-team self-check / 📊 Confidence grading / 📋 Input validation
-   [4] Prior role output summaries (if dependent)
-   ```
-7. **Pre-spawn checklist**:
-   ```
-   □ TOOL-BOOTSTRAP.md fully injected
-   □ Role template fully injected (with red-team/confidence sections)
-   □ {{TARGET}} replaced
-   □ Prior outputs injected (if dependent)
-   □ Blackboard path correct
-   ```
-
-### Step 1: Parallel Research Phase
-```
-sessions_spawn (parallel):
-  - label: "team-analyst-a"
-    mode: "run"
-    runTimeoutSeconds: 600
-    task: [TOOL-BOOTSTRAP + analyst template]
-    
-  - label: "team-analyst-b"
-    mode: "run"
-    runTimeoutSeconds: 600
-    task: [TOOL-BOOTSTRAP + scout template]
-```
-
-After completion: CONDUCTOR merges outputs, arbitrates conflicts, writes to DECISIONS.md.
-
-### Step 2: Parallel Creation Phase
-Depends on Step 1 outputs:
-```
-sessions_spawn (parallel):
-  - label: "team-creator-a"
-    mode: "run"
-    runTimeoutSeconds: 600
-    task: [TOOL-BOOTSTRAP + creator template + Step 1 key outputs]
-    
-  - label: "team-creator-b"
-    mode: "run"
-    runTimeoutSeconds: 600
-    task: [TOOL-BOOTSTRAP + strategist template + Step 1 key outputs]
-```
-
-### Step 3: Decision Synthesis
-Depends on Steps 1 + 2:
-```
-sessions_spawn:
-  - label: "team-decision"
-    mode: "run"
-    runTimeoutSeconds: 600
-    task: [TOOL-BOOTSTRAP + decision template + all prior outputs]
-```
-
-### Step 4: CONDUCTOR Review + Deliver
-1. Read decision output
-2. Cross-check: creator strategy ↔ strategist plan consistency
-3. Verify kill criteria are specific and quantifiable
-4. Generate executive summary → deliver to user
-
----
-
-## Progress Notifications
-
-After each step, notify the user:
-```
-[Step X/4 Complete] → Key output: XXX → Next: Step Y
-```
-
----
-
-## Cross-Team Event Protocol (MANDATORY)
-
-Every team MUST implement this protocol. It enables automatic collaboration between teams.
-
-### Before Execution — Check Inbound Events
+### Dispatch决策树
 
 ```
-1. Scan events/pending/ for events where target_team = this team
-2. If found → prioritize event handling over user instructions (event-driven mode)
-3. Read event context → execute accordingly → write result
-4. Move processed event to events/resolved/
+收到任务/事件
+    │
+    ├─ 是内部任务？
+    │   ├─ YES → 分解 → dispatch给内部Role
+    │   └─ NO  → 判断是否需要跨团队
+    │
+    ├─ 需要跨团队？
+    │   ├─ YES → 检查chain_depth < max(5)
+    │   │   ├─ OK → 通过templates.py生成标准事件 → 写入events/pending/
+    │   │   └─ EXCEEDED → 标记failed，报告用户
+    │   └─ NO → 内部处理
+    │
+    └─ 处理完成
+        ├─ 需要回传？→ 写回结果事件（DATA_READY/DEFENSE_REPORT等）
+        └─ 最终结果？→ 汇总报告 → 推送用户
 ```
 
-### During Execution — Emit Events When Blocked
+### 事件写回标准
 
-When your team encounters a situation it cannot resolve alone:
+使用 `framework/eventbus/templates.py` 生成标准化事件：
 
-| Situation | Event Type | Target |
-|-----------|-----------|--------|
-| Missing data needed for analysis | `DATA_GAP` | data-collection-team |
-| Crawl/scrape blocked by anti-bot | `CRAWL_BLOCKED` | arc-team (Mode C) |
-| Need defense assessment before crawl | `CRAWL_STRATEGY` | arc-team (Mode B) |
-| Data anomaly detected | `ANOMALY` | data-collection-team |
-| Security incident (banned/blocked) | `SECURITY_INCIDENT` | arc-team (Mode C) |
+```python
+from eventbus.templates import generate_event_script
 
-### After Execution — Emit Result Events
-
-When your team completes a task requested by another team:
-
-| Situation | Event Type | Target |
-|-----------|-----------|--------|
-| Defense/bypass strategy ready | `DEFENSE_REPORT` | requesting team |
-| Requested data collected + cleaned | `DATA_READY` | requesting team |
-| Market signal worth evaluating | `MARKET_SIGNAL` | ecommerce-team |
-
-### Event File Format
-
-Write to `events/pending/{NNN}-{EVENT_TYPE}.md`:
-
-```yaml
----
-event_id: "evt-{project}-{NNN}"
-event_type: DATA_GAP
-severity: HIGH
-source_team: your-team-name
-source_role: ROLE_NAME
-timestamp: "ISO8601"
-status: pending
-chain_depth: N        # increment from parent event
-callback:
-  team: requesting-team
-  resume_role: ROLE_NAME
-  write_to: "team/blackboard/FILE.md"
----
-
-## Context
-What happened and why you need help.
-
-## Request
-What you need from the target team.
+script = generate_event_script(
+    event_type="DATA_READY",
+    source_team="data-collection-team",
+    source_role="SPIDER",
+    severity="MEDIUM",
+    chain_depth=current_depth + 1,
+    body="采集完成，共1200条数据...",
+    workspace_dir=workspace,
+    chain_id=current_chain_id,
+    parent_event_id=current_event_id,
+)
 ```
 
-### Safety
-- **Never exceed chain_depth 5** — if chain_depth ≥ 5, write to failed/ and alert
-- **Always include callback** — so results flow back to the requesting team
-- **Watchdog is watching** — if your team stalls, Watchdog auto-recovers within 2 minutes
+或直接用CLI：
 
----
-
-## Quality Gate Checklist
-
-```
-□ Report has one-sentence conclusion?
-□ Confidence levels tagged?
-□ Red-team self-check completed?
-□ Data sources annotated?
-□ Conflicts with prior reports flagged?
-□ Blockers identified?
+```bash
+PYTHONPATH=framework python3 -m eventbus emit DATA_READY \
+  --source-team data-collection-team \
+  --source-role SPIDER \
+  --severity MEDIUM \
+  --chain-depth 1 \
+  --chain-id "chain-xxx" \
+  --context "采集完成，共1200条数据"
 ```
 
-Failed → fix in current session (don't re-spawn).
+## 内部Dispatch规则
+
+1. **并行优先** — 独立子任务必须并行dispatch，不串行等待
+2. **Red-team** — 每个Role的产出必须包含自我批评
+3. **Confidence标注** — 所有结论标注 HIGH/MEDIUM/LOW 置信度
+4. **数据优先** — 冲突时量化数据胜出
+5. **来源标注** — 无来源的数据点 = 无效
+
+## Blackboard协作（团队内部）
+
+团队内部Role之间仍使用Blackboard（共享文件）协作：
+
+```
+blackboard/
+├── task-brief.md        # CONDUCTOR写入的任务简报
+├── {role}-output.md     # 各Role的产出
+├── conflict-log.md      # 冲突记录
+└── final-decision.md    # 最终决策
+```
+
+**跨团队协作 = Event Bus（事件驱动）**
+**团队内部协作 = Blackboard（文件共享）**

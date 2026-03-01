@@ -228,6 +228,33 @@ openclaw-multi-agent-team/
 
 ---
 
+## Runtime Features (Production-Grade)
+
+Event Bus Runtime — 跨团队自动协作引擎，21个Python模块，4500+ lines：
+
+- ✅ **Event Bus Runtime** — scan → route → dispatch 核心循环
+- ✅ **CronDispatcher** — 写DispatchRequest → Watchdog cron消费，解耦执行
+- ✅ **Dynamic Capability Registry** — `capabilities.yaml` 声明即接入，零代码路由
+- ✅ **DataBus** — Schema-validated data references（内置4种Schema）
+- ✅ **Priority Queue** — CRITICAL事件优先dispatch
+- ✅ **Memory Bridge** — 跨团队知识共享（knowledge/{domain}/{topic}.md）
+- ✅ **Cost Controller** — Per-chain token预算，severity→model映射
+- ✅ **Chain Visualization** — `trace` 命令树形展示事件链路
+- ✅ **Team Self-Evolution** — 模式提取 + shortcut匹配，同类事件跳步执行
+- ✅ **Parallel Chain Scheduler** — 多链路并发，团队锁防冲突
+- ✅ **Watchdog V3** — 5种健康检查 + 智能恢复 + cron dispatch
+
+```bash
+# 快速体验
+cd openclaw-multi-agent-team
+PYTHONPATH=framework python3 -m eventbus status
+PYTHONPATH=framework python3 -m eventbus registry --scan
+```
+
+详见 [Event Bus详解](framework/EVENT-BUS.md) | [跨团队协作指南](docs/CROSS-TEAM-GUIDE.md)
+
+---
+
 ## Quick Start
 
 ### 1. Install OpenClaw

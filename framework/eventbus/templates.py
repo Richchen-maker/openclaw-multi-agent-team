@@ -22,6 +22,8 @@ def generate_event_script(
     chain_depth: int,
     body: str,
     workspace_dir: Path,
+    chain_id: str | None = None,
+    parent_event_id: str | None = None,
 ) -> str:
     """Generate a shell script string that writes a standardized event file.
 
@@ -42,6 +44,9 @@ def generate_event_script(
     # Escape single quotes in body for shell safety
     safe_body = body.replace("'", "'\\''")
 
+    chain_line = f"\nchain_id: '{chain_id}'" if chain_id else ""
+    parent_line = f"\nparent_event_id: '{parent_event_id}'" if parent_event_id else ""
+
     return f"""#!/bin/bash
 PENDING_DIR='{pending_dir}'
 mkdir -p "$PENDING_DIR"
@@ -56,7 +61,7 @@ source_team: '{source_team}'
 source_role: '{source_role}'
 timestamp: '$(date -u +%Y-%m-%dT%H:%M:%SZ)'
 status: 'pending'
-chain_depth: {chain_depth}
+chain_depth: {chain_depth}{chain_line}{parent_line}
 ---
 {safe_body}
 EVENTEOF
@@ -72,6 +77,8 @@ def write_event(
     chain_depth: int,
     body: str,
     workspace_dir: Path,
+    chain_id: str | None = None,
+    parent_event_id: str | None = None,
 ) -> Path:
     """Write a standardized event file to events/pending/ (Python version).
 
@@ -107,6 +114,10 @@ def write_event(
         "status": "pending",
         "chain_depth": chain_depth,
     }
+    if chain_id:
+        metadata["chain_id"] = chain_id
+    if parent_event_id:
+        metadata["parent_event_id"] = parent_event_id
 
     front = yaml.dump(metadata, default_flow_style=False, allow_unicode=True, sort_keys=False)
     content = f"---\n{front}---\n{body}\n"

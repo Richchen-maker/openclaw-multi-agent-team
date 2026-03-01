@@ -23,7 +23,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "resolved_retention": 7,      # resolved事件保留天数
     "dispatch_model": None,        # sub-agent模型override，None=默认
     "dispatch_timeout": 300,       # sub-agent超时秒数
-    "dispatch_mode": "default",    # "default" (print) 或 "live" (spawn)
+    "dispatch_mode": "cron",       # "cron" (watchdog cron) 或 "live" (spawn) 或 "default" (print)
     "daemon_pid_file": "eventbus.pid",  # PID文件名（相对于events/.watchdog/）
     "bus_mode": "cron",            # "cron" (skip BUS_DOWN check) 或 "daemon"
 }

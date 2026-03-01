@@ -1,548 +1,203 @@
-# Cross-Team Collaboration Guide
+# Cross-Team Collaboration Guide V3
 
-Complete guide to deploying and using the Event Bus for automated cross-team workflows.
+## 概述
 
----
+团队间协作通过 **Event Bus** 实现。团队A发现需要团队B协助 → 写事件文件 → EventBus路由 → 团队B处理 → 写回结果事件。
 
-## Part 1: Concepts
+**全链路零人工干预。**
 
-### Why Cross-Team Collaboration?
+## 快速开始
 
-Single teams hit walls. E-commerce needs data it can't collect. Data collection hits anti-bot defenses it can't bypass. Each team is excellent at its specialty but helpless outside it.
-
-The Event Bus connects teams automatically. When one team hits a wall, it writes an event. The bus routes it to whichever team can solve it. No human intervention needed.
-
-### How Event Bus Works
-
-```
-┌──────────────┐         ┌──────────────┐         ┌──────────────┐
-│  Team A      │  event  │  Event Bus   │  route   │  Team B      │
-│              │ ──────→ │              │ ──────→  │              │
-│  hits wall   │         │  polls       │         │  solves it   │
-│  writes event│ ←────── │  pending/    │ ←────── │  writes back │
-│  reads result│  result │              │  result  │              │
-└──────────────┘         └──────────────┘         └──────────────┘
-```
-
-### Event Lifecycle
-
-```
-pending → processing → resolved
-                    ↘ failed (needs human intervention)
-```
-
-| Status | Meaning | Location |
-|--------|---------|----------|
-| `pending` | Waiting for dispatch | `events/pending/` |
-| `processing` | Dispatched to target team, in progress | `events/processing/` |
-| `resolved` | Completed successfully | `events/resolved/` |
-| `failed` | Target team couldn't handle it | `events/failed/` |
-
----
-
-## Part 2: Deployment
-
-### Directory Structure
-
-```
-workspace/
-├── events/
-│   ├── pending/       # New events land here
-│   ├── processing/    # Currently being handled
-│   ├── resolved/      # Done (retained 7 days)
-│   └── failed/        # Needs manual fix
-├── ecommerce-team/
-├── data-collection-team/
-├── arc-team/
-└── framework/
-    └── eventbus/      # Event Bus module
-```
-
-### Create Event Directories
+### 1. 确保Event Bus可用
 
 ```bash
-mkdir -p events/{pending,processing,resolved,failed}
+cd /path/to/openclaw-multi-agent-team
+PYTHONPATH=framework python3 -m eventbus status
 ```
 
-Expected output: (no output = success)
-
-### Install Dependencies
+### 2. 发射一个测试事件
 
 ```bash
-pip install pyyaml
-```
-
-Expected output:
-```
-Successfully installed PyYAML-6.0.x
-```
-
-### Verify Installation
-
-```bash
-python -m eventbus status
-```
-
-Expected output:
-```
-Event Bus Status
-────────────────
-  pending:    0
-  processing: 0
-  resolved:   0
-  failed:     0
-```
-
----
-
-## Part 3: Configuration
-
-### Default Routing Table
-
-8 event types, pre-configured:
-
-| Event Type | Target Team | Use Case |
-|-----------|-------------|----------|
-| `DATA_GAP` | data-collection-team | Missing data for analysis |
-| `CRAWL_BLOCKED` | arc-team | Spider hit anti-bot |
-| `CRAWL_STRATEGY` | arc-team | Need defense assessment for new platform |
-| `DEFENSE_REPORT` | data-collection-team | ARC bypass strategy ready |
-| `DATA_READY` | ecommerce-team | Cleaned data available |
-| `ANOMALY` | data-collection-team | Data source changed/broken |
-| `MARKET_SIGNAL` | ecommerce-team | External market event detected |
-| `SECURITY_INCIDENT` | arc-team | Account ban / IP blacklist |
-
-### Custom Routing (eventbus.yaml)
-
-Create `eventbus.yaml` in workspace root:
-
-```yaml
-polling_interval: 30
-max_chain_depth: 5
-dedup_window: 3600
-timeout: 1800
-
-routes:
-  DATA_GAP: data-collection-team          # default
-  CRAWL_BLOCKED: arc-team                 # default
-  TRANSLATION_NEEDED: content-team        # custom
-  LEGAL_REVIEW: legal-team                # custom
-  COST_ANALYSIS: finance-team             # custom
-```
-
-### Adding a New Event Type
-
-Add one line to `routes:` in `eventbus.yaml`:
-
-```yaml
-routes:
-  MY_NEW_EVENT: my-target-team
-```
-
-Then emit it:
-
-```bash
-python -m eventbus emit MY_NEW_EVENT \
-  --source-team my-source-team \
-  --source-role MY_ROLE \
-  --severity MEDIUM \
-  --context "description of what happened"
-```
-
-### Adding a New Team to Routing
-
-Just reference it in `routes:`. No registration needed — the team directory must exist in your workspace.
-
-```yaml
-routes:
-  LEGAL_REVIEW: legal-team    # legal-team/ must exist in workspace
-```
-
----
-
-## Part 4: Usage
-
-### Emit an Event (Manual Test)
-
-```bash
-python -m eventbus emit DATA_GAP \
+PYTHONPATH=framework python3 -m eventbus emit DATA_GAP \
   --source-team ecommerce-team \
   --source-role RADAR \
   --severity HIGH \
-  --context "缺少蓝牙耳机TOP20竞品价格数据"
+  --context "测试：需要蓝牙耳机价格数据"
 ```
 
-Expected output:
-```
-✅ Event created: events/pending/20260228-093000-DATA_GAP.yaml
-   Type: DATA_GAP
-   Route: ecommerce-team/RADAR → data-collection-team
-```
-
-Verify the file:
+### 3. 查看路由
 
 ```bash
-cat events/pending/20260228-*-DATA_GAP.yaml
+PYTHONPATH=framework python3 -m eventbus route DATA_GAP
+# → data-collection-team / mode A
 ```
 
-Expected output:
-```yaml
-event_id: "evt-20260228-001"
-event_type: DATA_GAP
-severity: HIGH
-source_team: ecommerce-team
-source_role: RADAR
-timestamp: "2026-02-28T09:30:00Z"
-status: pending
-target_team: data-collection-team
-context: "缺少蓝牙耳机TOP20竞品价格数据"
-```
-
-### Start Event Bus Polling
+### 4. 运行dispatch
 
 ```bash
-python -m eventbus run
+# Dry-run模式（打印命令不执行）
+PYTHONPATH=framework python3 -m eventbus run
+
+# Cron模式（写DispatchRequest，由Watchdog消费）
+# 需要配置 eventbus.yaml dispatch_mode: cron
+
+# Live模式（直接spawn sub-agent）
+PYTHONPATH=framework python3 -m eventbus run --live
 ```
 
-Expected output:
-```
-🚌 Event Bus started (polling every 60s)
-   Watching: events/pending/
-   Routes loaded: 8 event types
-[09:31:00] Processing: evt-20260228-001 DATA_GAP → data-collection-team
-[09:31:00] Moved to: events/processing/20260228-093000-DATA_GAP.yaml
-```
+## Dispatch机制
 
-### Check Event Status
+### CronDispatcher + Watchdog
 
-```bash
-python -m eventbus status
+生产环境推荐 `dispatch_mode: cron`：
+
 ```
-
-Expected output:
-```
-Event Bus Status
-────────────────
-  pending:    0
-  processing: 1
-  resolved:   0
-  failed:     0
-
-Active Events:
-  [processing] evt-20260228-001  DATA_GAP  → data-collection-team  (1m ago)
+EventBus scan pending/
+  → 路由到目标团队
+  → CronDispatcher写DispatchRequest到 events/.dispatch/
+    → Watchdog cron定时扫描（每N秒）
+      → 读取pending request
+      → openclaw spawn执行
+      → sub-agent完成后写回事件
 ```
 
----
+**为什么用Cron而不是Live**：
+- 解耦：EventBus和执行器独立运行
+- 可控：Watchdog可以做流控、排队、优先级
+- 可审计：DispatchRequest文件留痕
 
-## Part 5: Complete 5-Step Cross-Team Example
-
-Reproducing the full chain from the README: e-commerce category assessment triggers data collection, hits anti-bot, ARC breaks through, data flows back.
-
-### Step 1: E-commerce RADAR Discovers Data Gap
-
-```bash
-python -m eventbus emit DATA_GAP \
-  --source-team ecommerce-team \
-  --source-role RADAR \
-  --severity HIGH \
-  --context "Analyzing Bluetooth earphone category. Missing: TOP20 competitor 30-day price history and promo frequency from Taobao."
-```
-
-Event file created (`events/pending/20260228-100000-DATA_GAP.yaml`):
+## eventbus.yaml 配置
 
 ```yaml
-event_id: "evt-20260228-001"
-event_type: DATA_GAP
-severity: HIGH
-source_team: ecommerce-team
-source_role: RADAR
-timestamp: "2026-02-28T10:00:00Z"
-status: pending
-target_team: data-collection-team
-callback:
-  team: ecommerce-team
-  resume_role: RADAR
-  write_to: "blackboard/MARKET-SIGNALS.md"
-context: |
-  Analyzing Bluetooth earphone category.
-  Missing: TOP20 competitor 30-day price history and promo frequency from Taobao.
-  Need: JSON with sku_id, title, price_history[], promo_events[]
+# 放在workspace根目录
+workspace_dir: "."
+poll_interval: 60              # EventBus轮询间隔
+max_chain_depth: 5             # 防止无限递归
+dedup_window: 3600             # 去重窗口（秒）
+processing_timeout: 1800       # 超时后标记failed
+resolved_retention: 7          # resolved保留天数
+dispatch_mode: "cron"          # cron | live | default
+dispatch_timeout: 300          # sub-agent超时
+bus_mode: "cron"               # cron(skip BUS_DOWN check) | daemon
 ```
 
-Expected output:
-```
-✅ Event created: events/pending/20260228-100000-DATA_GAP.yaml
-   Type: DATA_GAP
-   Route: ecommerce-team/RADAR → data-collection-team
+## chain_id 链路追踪
+
+每条跨团队协作链共享一个 `chain_id`，用于追踪整个链路。
+
+### 写回事件时传递chain_id
+
+```python
+from eventbus.templates import generate_event_script
+
+script = generate_event_script(
+    event_type="DATA_READY",
+    source_team="data-collection-team",
+    source_role="SPIDER",
+    severity="MEDIUM",
+    chain_depth=current_depth + 1,   # 深度+1
+    body="采集完成...",
+    workspace_dir=workspace,
+    chain_id=original_chain_id,       # 传递原始chain_id
+    parent_event_id=triggering_event_id,
+)
 ```
 
-### Step 2: Data Collection SPIDER Gets Blocked
-
-SPIDER starts crawling Taobao, hits slider CAPTCHA at page 3.
+### CLI发射带chain_id的事件
 
 ```bash
-python -m eventbus emit CRAWL_BLOCKED \
+PYTHONPATH=framework python3 -m eventbus emit DATA_READY \
   --source-team data-collection-team \
   --source-role SPIDER \
-  --severity HIGH \
-  --context "Taobao Bluetooth earphone crawl blocked at page 3/20. Slider CAPTCHA + IP rate limit triggered. Platform: taobao.com, Block type: slider_captcha + ip_throttle"
-```
-
-Event file (`events/pending/20260228-100500-CRAWL_BLOCKED.yaml`):
-
-```yaml
-event_id: "evt-20260228-002"
-event_type: CRAWL_BLOCKED
-severity: HIGH
-source_team: data-collection-team
-source_role: SPIDER
-timestamp: "2026-02-28T10:05:00Z"
-status: pending
-target_team: arc-team
-target_mode: "C"
-callback:
-  team: data-collection-team
-  resume_role: SPIDER
-context: |
-  Taobao Bluetooth earphone crawl blocked at page 3/20.
-  Slider CAPTCHA + IP rate limit triggered.
-  Platform: taobao.com
-  Block type: slider_captcha + ip_throttle
-  Progress: 3/20 pages collected
-```
-
-Expected output:
-```
-✅ Event created: events/pending/20260228-100500-CRAWL_BLOCKED.yaml
-   Type: CRAWL_BLOCKED
-   Route: data-collection-team/SPIDER → arc-team
-```
-
-### Step 3: ARC Team Breaks Through
-
-ARC analyzes Taobao's defenses, produces bypass strategy.
-
-```bash
-python -m eventbus emit DEFENSE_REPORT \
-  --source-team arc-team \
-  --source-role COMMANDER \
   --severity MEDIUM \
-  --context "Taobao bypass strategy ready: 1) Rate limit to 2req/s with random intervals, 2) curl-impersonate Chrome131 fingerprint, 3) Slider CAPTCHA via captcha-recognizer L2 engine, 4) Rotate proxy IP pool. Confidence: HIGH"
+  --chain-depth 2 \
+  --chain-id "chain-abc123" \
+  --parent "original-event-id" \
+  --context "采集完成，1200条数据"
 ```
 
-Event file (`events/pending/20260228-101200-DEFENSE_REPORT.yaml`):
-
-```yaml
-event_id: "evt-20260228-003"
-event_type: DEFENSE_REPORT
-severity: MEDIUM
-source_team: arc-team
-source_role: COMMANDER
-timestamp: "2026-02-28T10:12:00Z"
-status: pending
-target_team: data-collection-team
-callback:
-  team: data-collection-team
-  resume_role: SPIDER
-context: |
-  Taobao bypass strategy ready:
-  1) Rate limit to 2req/s with random intervals
-  2) curl-impersonate Chrome131 fingerprint
-  3) Slider CAPTCHA via captcha-recognizer L2 engine
-  4) Rotate proxy IP pool
-  Confidence: HIGH
-```
-
-Expected output:
-```
-✅ Event created: events/pending/20260228-101200-DEFENSE_REPORT.yaml
-   Type: DEFENSE_REPORT
-   Route: arc-team/COMMANDER → data-collection-team
-```
-
-### Step 4: Data Collection Retries and Succeeds
-
-SPIDER applies ARC's strategy, completes collection.
+### 可视化链路
 
 ```bash
-python -m eventbus emit DATA_READY \
-  --source-team data-collection-team \
-  --source-role SPIDER \
-  --severity LOW \
-  --context "Taobao Bluetooth earphone TOP20 data collected. 20/20 SKUs complete. Cleaned data at: warehouse/cleaned/taobao_bt_earphone/. Format: JSON, 20 records with price_history and promo_events."
+PYTHONPATH=framework python3 -m eventbus trace chain-abc123
 ```
 
-Event file (`events/pending/20260228-102500-DATA_READY.yaml`):
+## 事件写回标准
 
-```yaml
-event_id: "evt-20260228-004"
-event_type: DATA_READY
-severity: LOW
-source_team: data-collection-team
-source_role: SPIDER
-timestamp: "2026-02-28T10:25:00Z"
-status: pending
-target_team: ecommerce-team
-callback:
-  team: ecommerce-team
-  resume_role: RADAR
-  write_to: "blackboard/MARKET-SIGNALS.md"
-context: |
-  Taobao Bluetooth earphone TOP20 data collected.
-  20/20 SKUs complete.
-  Cleaned data at: warehouse/cleaned/taobao_bt_earphone/
-  Format: JSON, 20 records with price_history and promo_events.
-data_path: "warehouse/cleaned/taobao_bt_earphone/"
+使用 `framework/eventbus/templates.py` 确保格式一致。
+
+**必填字段**：event_type, source_team, source_role, severity, chain_depth, body
+**推荐字段**：chain_id, parent_event_id
+**自动生成**：event_id, timestamp
+
+templates.py 提供两种方式：
+1. `generate_event_script()` → 生成shell脚本字符串
+2. `write_event_file()` → 直接写Python
+
+## 完整协作链示例
+
+```
+🛒 电商团队发现数据缺口
+  → emit DATA_GAP (chain_id=chain-001, depth=0)
+    │
+    ▼ EventBus路由 → data-collection-team
+📡 数据采集团队执行采集
+  → 被反爬拦截
+  → emit CRAWL_BLOCKED (chain_id=chain-001, depth=1)
+    │
+    ▼ EventBus路由 → arc-team
+🛡️ ARC团队评估防御
+  → emit DEFENSE_REPORT (chain_id=chain-001, depth=2)
+    │
+    ▼ EventBus路由 → data-collection-team
+📡 数据采集团队用新策略重试
+  → 成功
+  → emit DATA_READY (chain_id=chain-001, depth=3)
+    │
+    ▼ EventBus路由 → ecommerce-team
+🛒 电商团队完成分析 → Go/No-Go决策
 ```
 
-Expected output:
-```
-✅ Event created: events/pending/20260228-102500-DATA_READY.yaml
-   Type: DATA_READY
-   Route: data-collection-team/SPIDER → ecommerce-team
-```
+**4个团队，4次事件流转，零人工干预。**
 
-### Step 5: E-commerce Completes Analysis
-
-RADAR reads the cleaned data, completes the category assessment. No event needed — the chain ends here.
+## 快捷命令速查
 
 ```bash
-python -m eventbus status
+# 所有命令前缀
+PYTHONPATH=framework python3 -m eventbus
+
+# 常用
+eventbus status              # 事件统计
+eventbus scan                # 扫描pending
+eventbus run                 # 单次dispatch
+eventbus run --live          # 直接执行
+eventbus watchdog            # 健康检查
+eventbus watchdog --fix      # 自动修复
+eventbus trace <id>          # 链路追踪
+eventbus registry --scan     # 团队能力扫描
+eventbus cost                # 预算报告
+eventbus scheduler           # 调度状态
 ```
 
-Expected output:
-```
-Event Bus Status
-────────────────
-  pending:    0
-  processing: 0
-  resolved:   4
-  failed:     0
+## Watchdog监控
 
-Chain: evt-001 → evt-002 → evt-003 → evt-004 (complete)
-Total time: 25 minutes
-```
+5种检查：
 
-**Full chain, zero human intervention. You only said "assess Bluetooth earphone category".**
+| 类型 | 说明 | 自动修复 |
+|------|------|----------|
+| STALE_PENDING | pending超时未dispatch | 重新dispatch |
+| STALE_PROCESSING | processing中超时 | 标记failed + 重试 |
+| CHAIN_BROKEN | 事件链断裂 | 通知用户 |
+| FORMAT_ERROR | YAML格式错误 | 移到failed |
+| BUS_DOWN | EventBus进程丢失 | 重启提示 |
 
----
-
-## Part 6: OpenClaw Integration
-
-### Cron Job Auto-Polling
-
-Add to OpenClaw config (`~/.openclaw/config.yaml`):
-
-```yaml
-cron:
-  - name: event-bus-poll
-    schedule: "*/1 * * * *"
-    command: "python -m eventbus run --once"
-```
-
-This polls `events/pending/` every minute. `--once` runs a single poll cycle then exits (cron handles the loop).
-
-### Inject Event Detection into ORCHESTRATOR.md
-
-Add this block to each team's `ORCHESTRATOR.md`:
-
-```markdown
-## Pre-Execution: Event Check
-
-Before executing user commands, scan for inbound events:
-
-1. List files in `events/pending/` where `target_team` matches this team
-2. If events found → process them first (event-driven mode)
-3. No events → proceed with normal user instruction
-
-## Post-Execution: Event Emission
-
-After execution, check for blockers:
-
-1. Did this execution hit a wall the team can't solve?
-2. Yes → emit an event (see Event Type table in framework/eventbus/README.md)
-3. Move any completed inbound events to `events/resolved/`
-```
-
-### Auto-Emit Events from Roles
-
-Add this to each role's template (e.g., `templates/SPIDER.md`):
-
-```markdown
-## Event Protocol
-
-When you encounter a situation you cannot resolve:
-
-- **Data missing** → emit DATA_GAP with what you need
-- **Blocked by anti-bot** → emit CRAWL_BLOCKED with platform, block type, progress
-- **Data ready** → emit DATA_READY with data path and format
-- **Security issue** → emit SECURITY_INCIDENT with details
-
-Use the CLI:
-\`\`\`bash
-python -m eventbus emit {EVENT_TYPE} \
-  --source-team {this-team} \
-  --source-role {YOUR_CODENAME} \
-  --severity {CRITICAL|HIGH|MEDIUM|LOW} \
-  --context "{what happened and what you need}"
-\`\`\`
-
-Or write the YAML file directly to `events/pending/`.
-```
-
----
-
-## Part 7: Troubleshooting
-
-### Event stuck in `processing`
-
-**Cause:** Target team started but didn't finish within timeout (default 30min).
-
-**Fix:**
 ```bash
-# Check what's stuck
-python -m eventbus list --status processing
+# 一次性检查
+PYTHONPATH=framework python3 -m eventbus watchdog
 
-# Option 1: Wait longer (increase timeout in eventbus.yaml)
-# Option 2: Manually fail and retry
-python -m eventbus fail evt-20260228-001 --reason "timeout"
-mv events/failed/20260228-*-DATA_GAP.yaml events/pending/
+# 自动修复
+PYTHONPATH=framework python3 -m eventbus watchdog --fix
+
+# 持续监控
+PYTHONPATH=framework python3 -m eventbus watchdog --loop --interval 120
 ```
-
-### Event chain loop (A→B→A→B...)
-
-**Cause:** Two teams keep emitting events to each other without resolving.
-
-**Fix:** Built-in protection — max chain depth is 5 (configurable). If hit:
-```
-⚠️ Chain depth limit reached (5). Event evt-20260228-005 moved to failed/.
-```
-
-Manual resolution:
-```bash
-# Check the chain
-python -m eventbus list --status failed
-
-# Read the event to understand the loop
-cat events/failed/20260228-*-CRAWL_BLOCKED.yaml
-
-# Fix the root cause, then retry
-mv events/failed/20260228-*.yaml events/pending/
-```
-
-### Route not found for event type
-
-**Cause:** Custom event type not in default routes or `eventbus.yaml`.
-
-**Symptom:**
-```
-⚠️ No route for event type: TRANSLATION_NEEDED. Event stays in pending.
-```
-
-**Fix:** Add routing in `eventbus.yaml`:
-```yaml
-routes:
-  TRANSLATION_NEEDED: content-team
-```
-
-Then the next poll cycle picks it up automatically.

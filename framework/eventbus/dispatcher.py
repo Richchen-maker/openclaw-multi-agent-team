@@ -132,6 +132,64 @@ class Dispatcher:
 DefaultDispatcher = Dispatcher
 
 
+class CronDispatcher(Dispatcher):
+    """Cron-based dispatcher: writes YAML request files for Watchdog cron pickup.
+
+    This is the default dispatch engine. Watchdog cron polls events/.dispatch/
+    and spawns sub-agents for each pending request.
+    """
+
+    def __init__(self, workspace_dir: Path | str, config: dict[str, Any] | None = None) -> None:
+        self.workspace_dir = Path(workspace_dir)
+        self.config = config or {}
+
+    def execute(self, team: str, mode: str, event: Event, prompt: str) -> bool:
+        """Write dispatch request YAML to events/.dispatch/."""
+        dispatch_dir = self.workspace_dir / "events" / ".dispatch"
+        ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
+        request = DispatchRequest(
+            team=team,
+            mode=mode,
+            event_id=event.event_id,
+            prompt=prompt,
+        )
+        try:
+            filename = f"{ts}_{team}_{event.event_id[:8]}.yaml"
+            dispatch_dir.mkdir(parents=True, exist_ok=True)
+            data = {
+                "team": request.team,
+                "mode": request.mode,
+                "event_id": request.event_id,
+                "prompt": request.prompt,
+                "status": request.status,
+                "created_at": request.created_at,
+            }
+            path = dispatch_dir / filename
+            path.write_text(yaml.dump(data, default_flow_style=False, allow_unicode=True), encoding="utf-8")
+            logger.info("CronDispatcher: wrote %s", path.name)
+            return True
+        except Exception as e:
+            logger.error("CronDispatcher failed for %s: %s", event.event_id[:8], e)
+            return False
+
+    @staticmethod
+    def poll_requests(workspace_dir: Path | str) -> list[Path]:
+        """Scan events/.dispatch/ for pending YAML request files."""
+        dispatch_dir = Path(workspace_dir) / "events" / ".dispatch"
+        if not dispatch_dir.exists():
+            return []
+        return sorted(dispatch_dir.glob("*.yaml"))
+
+    @staticmethod
+    def mark_dispatched(request_file: Path) -> None:
+        """Mark a request as dispatched by moving it to .dispatch/done/."""
+        done_dir = request_file.parent / "done"
+        done_dir.mkdir(parents=True, exist_ok=True)
+        dest = done_dir / request_file.name
+        request_file.rename(dest)
+        logger.info("Marked dispatched: %s → done/", request_file.name)
+
+
 class OpenClawDispatcher(Dispatcher):
     """Live dispatcher that spawns OpenClaw sub-agents via CLI.
 

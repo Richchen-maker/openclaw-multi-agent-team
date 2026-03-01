@@ -1,190 +1,129 @@
-# Multi-Team Router Protocol
+# Team Router — 多团队路由机制
 
-> 当 workspace 下存在多个 team 目录时，CONDUCTOR 通过本协议将用户指令路由到正确的团队执行。
+## 目录结构
 
----
-
-## Core Concept
+团队位于 `examples/` 目录：
 
 ```
-workspace/
-├── framework/           # 通用框架（本目录）
-├── teams/
-│   ├── ecommerce/       # 电商选品团队
-│   │   ├── ORCHESTRATOR.md   # 头部含 trigger keywords
-│   │   ├── roles/
-│   │   └── blackboard/
-│   ├── content/         # 内容创作团队
-│   │   ├── ORCHESTRATOR.md
-│   │   ├── roles/
-│   │   └── blackboard/
-│   └── investment/      # 投研尽调团队
-│       ├── ORCHESTRATOR.md
-│       ├── roles/
-│       └── blackboard/
-└── CONDUCTOR.md         # 全局调度入口
+examples/
+├── ecommerce-team/        # 🛒 电商选品
+├── data-collection-team/  # 📡 数据采集
+├── arc-team/              # 🛡️ 安全攻防
+├── content-team/          # 📝 内容生产
+└── intelligence-team/     # 🔍 情报分析
 ```
 
-- 每个 team 是独立的 specialist 团队，拥有自己的角色模板、blackboard、执行协议
-- 每个 team 的 `ORCHESTRATOR.md` 头部必须声明 trigger keywords 和 team description
-- CONDUCTOR 是唯一的全局调度者，跨团队共享
+## 双轨路由
 
----
+### Track 1: 静态路由（DEFAULT_ROUTES）
 
-## ORCHESTRATOR.md Header Spec
+硬编码在 `framework/eventbus/router.py`：
 
-每个 team 的 ORCHESTRATOR.md 必须以如下 YAML frontmatter 开头：
+```python
+DEFAULT_ROUTES = {
+    "DATA_GAP":           {"target_team": "data-collection-team", "target_mode": "A"},
+    "CRAWL_BLOCKED":      {"target_team": "arc-team",             "target_mode": "C"},
+    "CRAWL_STRATEGY":     {"target_team": "arc-team",             "target_mode": "B"},
+    "DEFENSE_REPORT":     {"target_team": "data-collection-team", "target_mode": "A"},
+    "DATA_READY":         {"target_team": "ecommerce-team",       "target_mode": "A"},
+    "ANOMALY":            {"target_team": "data-collection-team", "target_mode": "B"},
+    "MARKET_SIGNAL":      {"target_team": "ecommerce-team",       "target_mode": "A"},
+    "SECURITY_INCIDENT":  {"target_team": "arc-team",             "target_mode": "C"},
+}
+```
 
+### Track 2: 动态路由（Registry）
+
+`framework/eventbus/registry.py` 自动扫描所有团队的 `capabilities.yaml`。
+
+**扫描路径**：
+```
+workspace下所有 *-team/ 目录
++ examples/*-team/
++ teams/*
+```
+
+**capabilities.yaml 格式**：
 ```yaml
----
-team: ecommerce
-description: "电商选品、竞品分析、定价策略"
-triggers:
-  keywords: [选品, 电商, SKU, 竞品, 定价, 上架, listing]
-  intents: [product_research, competitor_analysis, pricing]
-priority: 10          # 冲突时高优先级团队先匹配
----
+team: my-team
+description: "团队描述"
+capabilities:
+  - event_type: MY_EVENT
+    modes: [A, B, C]
+    description: "处理MY_EVENT事件"
+    priority: 10    # 多团队能处理同一事件时，priority高的优先
 ```
 
----
-
-## Routing Mechanism
+### 路由优先级
 
 ```
-User directive arrives
-    │
-    ├─ [1] Manual Override Check
-    │     用户说"启动XX团队" / "用content团队" → 直接路由，跳过匹配
-    │
-    ├─ [2] Auto Match
-    │     CONDUCTOR 扫描所有 teams/*/ORCHESTRATOR.md 的 triggers
-    │     │
-    │     ├─ Keyword Match: 指令中出现 trigger keyword → +1 score per hit
-    │     ├─ Intent Match: 语义意图匹配 triggers.intents → +3 score per hit
-    │     ├─ Priority Tiebreak: 同分时按 priority 字段降序
-    │     │
-    │     ├─ Single winner → 路由到该团队
-    │     ├─ Multiple matches (任务跨域) → 进入 Multi-Team Collaboration
-    │     └─ No match → CONDUCTOR 直接处理（不依赖团队）
-    │
-    └─ [3] Dispatch
-          加载目标团队的 ORCHESTRATOR.md → 按其协议执行
+1. 构造时显式传入 routes        → 最高优先
+2. Registry动态扫描结果         → 有capabilities.yaml就用
+3. DEFAULT_ROUTES静态表         → 兜底
 ```
 
-### Manual Override Examples
-
-| 用户指令 | 路由结果 |
-|---------|---------|
-| "启动电商团队，分析蓝牙耳机" | → ecommerce team |
-| "用content团队写一篇推广文案" | → content team |
-| "investment团队尽调这家公司" | → investment team |
-
----
-
-## Multi-Team Collaboration
-
-一个任务可能需要多个团队协作。两种模式：
-
-### Serial (串联)
-
-```
-Team A executes → output to shared blackboard → Team B reads and continues
+Router初始化逻辑（`router.py`）：
+```python
+class Router:
+    def __init__(self, routes=None, workspace_dir=None):
+        if routes is not None:
+            self.routes = routes                    # 显式覆盖
+        elif workspace_dir is not None:
+            reg = Registry(workspace_dir)
+            count = reg.scan()
+            if count > 0:
+                self.routes = reg.get_all_routes()  # 动态发现
+            else:
+                self.routes = dict(DEFAULT_ROUTES)  # 静态兜底
+        else:
+            self.routes = dict(DEFAULT_ROUTES)
 ```
 
-CONDUCTOR 负责：
-1. 先 dispatch Team A，等待完成
-2. 将 A 的关键输出写入 `blackboard/CROSS-TEAM-HANDOFF.md`
-3. Dispatch Team B，注入 A 的输出作为上下文
+## 路由查询
 
-### Parallel (并联)
+```bash
+# CLI查看某事件类型的路由
+PYTHONPATH=framework python3 -m eventbus route DATA_GAP
 
-```
-Team A ──┐
-         ├──→ CONDUCTOR merges → final output
-Team B ──┘
+# CLI查看Registry扫描结果
+PYTHONPATH=framework python3 -m eventbus registry --scan
 ```
 
-CONDUCTOR 负责：
-1. 同时 dispatch Team A 和 Team B
-2. 收集两个团队的输出
-3. 合并、仲裁冲突、生成最终结果
+## 新团队接入
 
-### Choosing Mode
+零代码接入流程：
 
-| 条件 | 模式 |
-|------|------|
-| B 依赖 A 的输出 | Serial |
-| A 和 B 独立工作 | Parallel |
-| 不确定 | Default to Serial（更安全） |
+1. 创建目录 `examples/my-team/`
+2. 创建 `capabilities.yaml`（声明能处理哪些event_type）
+3. 创建团队模板（ORCHESTRATOR.md + templates/）
+4. Registry自动发现 → EventBus自动路由
 
----
+**不需要修改任何框架代码。**
 
-## Conflict Rules
-
-1. **同名角色禁止跨团队并发**：如果 ecommerce 和 content 团队都有 `analyst` 角色，同一任务中不能同时 dispatch 两个 analyst — CONDUCTOR 必须选一个或串联执行
-2. **Blackboard 隔离**：每个团队写自己的 `teams/<name>/blackboard/`，跨团队数据通过 `blackboard/CROSS-TEAM-HANDOFF.md` 传递
-3. **Decision 权归属**：最终决策始终由 CONDUCTOR 做出，不由任何单个团队的 Decision 角色决定
-4. **资源竞争**：并发 sub-agent 数量上限由系统决定，CONDUCTOR 按 priority 排序调度
-
----
-
-## Example Scenario: 电商选品 → 内容推广
+## 架构图
 
 ```
-用户: "帮我选一款蓝牙耳机，选好之后写推广文案"
-
-CONDUCTOR 解析:
-  - "选品/蓝牙耳机" → ecommerce team (keyword match)
-  - "推广文案" → content team (keyword match)
-  - 依赖关系: content 需要 ecommerce 的选品结果 → Serial mode
-
-Execution:
-  [Phase 1] Dispatch ecommerce team
-    → Analyst: 市场调研
-    → Scout: 竞品扫描
-    → Decision: 推荐 Top 3 SKU
-    → Output: teams/ecommerce/blackboard/DECISIONS.md
-
-  [Handoff] CONDUCTOR 提取选品结果 → blackboard/CROSS-TEAM-HANDOFF.md
-
-  [Phase 2] Dispatch content team
-    → Context: 注入选品结果（产品名、卖点、定价、目标人群）
-    → Creator: 生成推广文案
-    → Reviewer: 质量审核
-    → Output: teams/content/blackboard/DELIVERABLES.md
-
-  [Final] CONDUCTOR 汇总 → 交付用户
+                    ┌──────────────┐
+                    │   EventBus   │
+                    │  bus.py      │
+                    └──────┬───────┘
+                           │ event_type
+                           ▼
+                    ┌──────────────┐
+                    │    Router    │
+                    │  router.py   │
+                    └──┬───────┬───┘
+                       │       │
+            ┌──────────┘       └──────────┐
+            ▼                             ▼
+    ┌───────────────┐             ┌───────────────┐
+    │ DEFAULT_ROUTES│             │   Registry    │
+    │  (静态表)      │             │ (capabilities │
+    │               │             │  .yaml扫描)    │
+    └───────────────┘             └───────────────┘
+                                         │
+                              ┌──────────┼──────────┐
+                              ▼          ▼          ▼
+                         ecommerce  data-coll    arc-team
+                           -team     -team         ...
 ```
-
----
-
-## Event-Driven Cross-Team Collaboration
-
-除了用户指令触发（上述路由机制），团队执行过程中可以**自动触发其他团队**。
-
-详见 [EVENT-BUS.md](EVENT-BUS.md) — 跨团队事件总线协议。
-
-```
-用户指令 → TEAM-ROUTER 路由 → Team A 执行
-                                    │
-                                    ├─ 遇到数据缺口 → 写 DATA_GAP 事件
-                                    │                      ↓
-                                    │               Event Bus 路由
-                                    │                      ↓
-                                    │               Team B 采集数据
-                                    │                      ↓
-                                    │               结果回流 Team A
-                                    ↓
-                              Team A 继续执行 → 交付用户
-```
-
-**TEAM-ROUTER 负责入口，EVENT-BUS 负责接力。**
-
----
-
-## Adding a New Team
-
-1. 创建 `teams/<name>/` 目录结构（ORCHESTRATOR.md + roles/ + blackboard/）
-2. ORCHESTRATOR.md 头部写好 triggers frontmatter
-3. 定义角色模板放入 `roles/`
-4. Done — CONDUCTOR 下次扫描时自动发现新团队

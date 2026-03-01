@@ -41,6 +41,8 @@ def _build_parser() -> argparse.ArgumentParser:
     emit_p.add_argument("--source-role", required=True)
     emit_p.add_argument("--context", default="", help="Event context / description (markdown body)")
     emit_p.add_argument("--chain-depth", type=int, default=0)
+    emit_p.add_argument("--chain-id", default=None, help="Chain ID for linking related events")
+    emit_p.add_argument("--parent", default=None, help="Parent event ID")
 
     # run
     run_p = sub.add_parser("run", help="Start event poll loop")
@@ -149,6 +151,8 @@ def main(argv: list[str] | None = None) -> int:
             source_role=args.source_role,
             body=args.context,
             chain_depth=args.chain_depth,
+            chain_id=args.chain_id,
+            parent_event_id=args.parent,
             events_dir=bus.events_dir,
         )
         print(f"Emitted: {ev.event_id} → events/pending/{ev.filename}")
@@ -401,10 +405,13 @@ def cmd_trace(args, workspace: Path):
             try:
                 event = Event.from_file(f)
                 matched = False
-                # 1. event_id前缀匹配
-                if prefix.lower() in event.event_id.lower():
+                # 1. chain_id精确匹配（优先）
+                if event.chain_id and prefix.lower() == event.chain_id.lower():
                     matched = True
-                # 2. body关键词匹配
+                # 2. event_id前缀匹配
+                elif prefix.lower() in event.event_id.lower():
+                    matched = True
+                # 3. body关键词匹配（回退）
                 elif prefix.lower() in (event.body or "").lower():
                     matched = True
                 if matched and event.event_id not in seen_ids:

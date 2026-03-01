@@ -460,6 +460,70 @@ For details: [Cross-Team Guide](docs/CROSS-TEAM-GUIDE.md) | [Event Bus README](f
 
 ---
 
+## Event Bus Configuration
+
+跨团队自动协作引擎配置。
+
+### 1. 创建配置文件
+
+```bash
+cd ~/.openclaw/workspace
+cat > eventbus.yaml << 'EOF'
+workspace_dir: "."
+poll_interval: 60              # 轮询间隔（秒）
+max_chain_depth: 5             # 事件链最大深度（防无限递归）
+dedup_window: 3600             # 去重窗口（秒）
+processing_timeout: 1800       # processing超时标记failed
+resolved_retention: 7          # resolved保留天数
+dispatch_mode: "cron"          # cron=Watchdog消费 | live=直接spawn | default=dry-run
+dispatch_timeout: 300          # sub-agent超时
+bus_mode: "cron"               # cron | daemon
+EOF
+```
+
+### 2. 初始化事件目录
+
+```bash
+mkdir -p events/{pending,processing,resolved,failed}
+```
+
+### 3. 验证
+
+```bash
+PYTHONPATH=framework python3 -m eventbus status
+```
+
+预期输出：
+```
+Event Bus Status
+────────────────
+  pending:    0
+  processing: 0
+  resolved:   0
+  failed:     0
+```
+
+### 4. 可选：团队能力扫描
+
+```bash
+PYTHONPATH=framework python3 -m eventbus registry --scan
+```
+
+### 5. 默认配置项说明
+
+| 配置项 | 默认值 | 说明 |
+|--------|--------|------|
+| `poll_interval` | 60 | EventBus轮询间隔（秒） |
+| `max_chain_depth` | 5 | 事件链最大递归深度 |
+| `dedup_window` | 3600 | 去重窗口（秒） |
+| `processing_timeout` | 1800 | processing超时（秒） |
+| `dispatch_mode` | cron | cron/live/default |
+| `bus_mode` | cron | cron跳过BUS_DOWN检查 |
+
+详见 [Event Bus详解](framework/EVENT-BUS.md) | [跨团队协作指南](docs/CROSS-TEAM-GUIDE.md)
+
+---
+
 ## License
 
 MIT — use it however you want.

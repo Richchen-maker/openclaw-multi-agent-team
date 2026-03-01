@@ -1,282 +1,220 @@
-# Cross-Team Event Bus Protocol
+# Event Bus — 跨团队自动协作引擎
 
-> 团队之间不直接调用，通过事件总线实现自动触发和数据流转。
+## Part 1: 协议设计
 
----
+### 核心理念
 
-## Core Concept
+团队之间不直接通信。通过文件系统的事件（YAML文件）异步协作。
 
-```
-┌──────────┐    EVENT     ┌──────────┐    EVENT     ┌──────────┐
-│ Team A   │ ──────────→  │  EVENT   │ ──────────→  │ Team B   │
-│          │              │   BUS    │              │          │
-│ (发现问题  │              │ (路由分发) │              │ (解决问题) │
-│  写事件)  │  ←──────────  │          │  ←──────────  │ 写回结果) │
-└──────────┘   RESULT     └──────────┘   RESULT     └──────────┘
-```
+- **松耦合** — 团队只知道事件类型，不知道谁在处理
+- **可审计** — 所有事件都是文件，天然可追溯
+- **可恢复** — 任何环节失败，事件还在，可重试
 
-**核心原则：团队只管做自己的事，遇到超出能力范围的问题 → 写事件 → 事件总线自动路由到能解决的团队。**
-
----
-
-## Event Lifecycle
-
-```
-1. Team A 遇到问题 → 写事件文件到 events/pending/
-2. Event Bus (cron/CONDUCTOR) 扫描 pending/
-3. 匹配路由规则 → dispatch 目标团队
-4. 目标团队执行 → 写结果到 events/resolved/
-5. 原始团队读取结果 → 继续工作
-```
-
----
-
-## Event File Spec
-
-事件文件路径：`workspace/events/pending/{timestamp}-{event_type}.md`
+### 事件格式
 
 ```yaml
 ---
-event_id: "evt-20260227-001"
-event_type: DATA_GAP                    # 事件类型（见下方类型表）
-severity: HIGH                          # CRITICAL / HIGH / MEDIUM / LOW
-source_team: ecommerce-team             # 发出事件的团队
-source_role: RADAR                      # 发出事件的角色
-timestamp: "2026-02-27T18:30:00Z"
-status: pending                         # pending → processing → resolved / failed
-
-# 路由提示（可选，Event Bus 也会自动匹配）
-target_team: data-collection-team
-target_mode: "A"                        # 目标团队的执行模式
-
-# 回调（可选）
-callback:
-  team: ecommerce-team
-  write_to: "blackboard/MARKET-SIGNALS.md"
-  resume_role: RADAR                    # 结果返回后哪个角色继续
+event_id: 'abc12345-def67890'
+event_type: 'DATA_GAP'
+severity: 'HIGH'               # CRITICAL > HIGH > MEDIUM > LOW > INFO
+source_team: 'ecommerce-team'
+chain_depth: 0                  # 链深度，max=5
+chain_id: 'chain-xxx'          # 链路追踪ID
+parent_event_id: ''            # 父事件ID
+metadata:
+  source_role: 'RADAR'
+  data_refs: []                # DataBus数据引用
 ---
-
-## Context
-
-RADAR 在分析蓝牙耳机品类时发现淘宝TOP20竞品的价格数据缺失。
-web_search 只能获取公开标价，无法获取历史价格趋势和促销频率。
-
-## Request
-
-需要采集以下数据：
-- 淘宝蓝牙耳机品类 TOP 20 SKU 的 30天价格历史
-- 各SKU促销频率（满减/优惠券/大促参与情况）
-- 数据格式：JSON，字段包含 sku_id, title, price_history[], promo_events[]
-
-## Expected Output
-
-结构化JSON数据，写入 data-collection-team/warehouse/cleaned/ 目录，
-同时摘要写入 ecommerce-team/blackboard/MARKET-SIGNALS.md
+事件正文（Markdown格式）
 ```
+
+### 状态机
+
+```
+pending → processing → resolved
+                    → failed
+```
+
+### 路由表
+
+event_type → target_team + target_mode
+
+详见 [TEAM-ROUTER.md](TEAM-ROUTER.md)
 
 ---
 
-## Event Types & Auto-Routing
+## Part 2: Runtime实现
 
-| Event Type | 含义 | 默认路由目标 | 触发条件 |
-|-----------|------|-------------|---------|
-| `DATA_GAP` | 数据缺口 | data-collection-team | 分析时发现关键数据缺失 |
-| `CRAWL_BLOCKED` | 采集被拦截 | arc-team (Mode C) | Spider遇到反爬拦截/验证码/封IP |
-| `CRAWL_STRATEGY` | 需要反爬策略 | arc-team (Mode B) | 新平台首次采集前需要防御评估 |
-| `DEFENSE_REPORT` | 防御评估完成 | data-collection-team | ARC完成目标平台评估，输出绕过方案 |
-| `DATA_READY` | 数据就绪 | ecommerce-team | 采集清洗完成，数据入库 |
-| `ANOMALY` | 数据异常 | data-collection-team | SENTINEL检测到数据源变化/失效 |
-| `MARKET_SIGNAL` | 市场信号 | ecommerce-team | 外部事件需要电商团队评估 |
-| `SECURITY_INCIDENT` | 安全事件 | arc-team (Mode C) | 账号被封/IP被拉黑/API签名变更 |
-
----
-
-## The Chain: Complete Cross-Team Workflow
-
-以 README 中的场景为例，完整事件链路：
+### 21个Python模块（4500+ lines）
 
 ```
-Step 1: 🛒 E-commerce RADAR → 发现数据缺口
-┌─────────────────────────────────────────────────┐
-│ RADAR分析蓝牙耳机品类                              │
-│ → web_search获取公开数据                           │
-│ → 发现缺少竞品历史价格和促销数据                      │
-│ → 写事件: events/pending/001-DATA_GAP.md           │
-│   target_team: data-collection-team                │
-│   callback: ecommerce-team/RADAR                   │
-└─────────────────────────────────────────────────┘
-                    │
-                    ▼ Event Bus 路由
-Step 2: 📡 Data Collection DISPATCHER → 自动接单
-┌─────────────────────────────────────────────────┐
-│ DISPATCHER读取事件 → 拆解采集任务                    │
-│ → MAPPER评估数据源（淘宝价格历史）                    │
-│ → SPIDER启动采集                                   │
-│ → 采集到第3页时触发滑块验证码 + IP限速                 │
-│ → SENTINEL检测到阻断                               │
-│ → 写事件: events/pending/002-CRAWL_BLOCKED.md      │
-│   target_team: arc-team                            │
-│   callback: data-collection-team/SPIDER             │
-│   context: 淘宝，滑块验证码，IP限速，已采3/20页        │
-└─────────────────────────────────────────────────┘
-                    │
-                    ▼ Event Bus 路由
-Step 3: 🛡️ ARC COMMANDER → 自动应急响应 (Mode C)
-┌─────────────────────────────────────────────────┐
-│ COMMANDER读取事件 → 判断Mode C应急响应               │
-│ → PHANTOM评估淘宝反爬体系（TLS指纹/Cookie策略）       │
-│ → MIMIC分析验证码类型 → 调用captcha_solver           │
-│ → STRIKER测试请求频率安全阈值                        │
-│ → 输出绕过方案:                                    │
-│   - 降速到2req/s + 随机间隔                         │
-│   - 使用curl-impersonate Chrome131指纹              │
-│   - 滑块验证码用captcha-recognizer L2引擎            │
-│   - 轮换代理IP池                                   │
-│ → 写事件: events/pending/003-DEFENSE_REPORT.md     │
-│   target_team: data-collection-team                │
-│   callback: data-collection-team/SPIDER             │
-└─────────────────────────────────────────────────┘
-                    │
-                    ▼ Event Bus 路由
-Step 4: 📡 Data Collection SPIDER → 带着方案重试
-┌─────────────────────────────────────────────────┐
-│ SPIDER读取ARC的绕过方案                             │
-│ → 应用: 降速 + 指纹伪造 + 验证码自动破解 + 代理轮换    │
-│ → 从第4页继续采集 → 成功完成20/20页                   │
-│ → REFINER清洗 → WAREHOUSE入库                      │
-│ → 写事件: events/pending/004-DATA_READY.md         │
-│   target_team: ecommerce-team                      │
-│   callback: ecommerce-team/RADAR                   │
-│   data_path: warehouse/cleaned/taobao_bt_earphone/ │
-└─────────────────────────────────────────────────┘
-                    │
-                    ▼ Event Bus 路由
-Step 5: 🛒 E-commerce RADAR → 拿到数据，继续分析
-┌─────────────────────────────────────────────────┐
-│ RADAR读取清洗后的数据                               │
-│ → 分析竞品价格趋势 + 促销频率                        │
-│ → 补全品类评估报告                                  │
-│ → BLADE定价 → ORACLE决策 → Go/No-Go                │
-└─────────────────────────────────────────────────┘
+framework/eventbus/
+├── bus.py              # 核心引擎 — scan/route/dispatch循环
+├── event.py            # Event数据模型
+├── router.py           # 双轨路由（静态+动态Registry）
+├── dispatcher.py       # 3种Dispatcher：Default/Cron/OpenClaw
+├── config.py           # 配置管理
+├── cli.py              # CLI（12+子命令）
+├── templates.py        # 事件写回模板
+├── watchdog.py         # V3监控（5种检查+自动修复+cron dispatch）
+├── registry.py         # 动态能力发现
+├── databus.py          # 数据引用+Schema验证
+├── memory_bridge.py    # 跨团队知识共享
+├── cost_controller.py  # 链路预算控制
+├── scheduler.py        # 多链路并行调度
+├── evolver.py          # 团队自进化
+├── analyzer.py         # 事件模式分析（V2）
+├── profiler.py         # 团队性能画像（V2）
+├── predictor.py        # 预测器（V2）
+├── history.py          # 历史追踪（V2）
+├── recovery.py         # 智能恢复引擎（V2）
+├── __init__.py
+└── __main__.py
 ```
 
-**全程零人工干预。你只说了一句"评估蓝牙耳机品类"。**
+### CLI命令
 
----
+```bash
+# 设置PYTHONPATH（所有命令前缀）
+export PYTHONPATH=framework
 
-## Event Bus Implementation
+# 基础
+python3 -m eventbus scan                    # 扫描pending事件
+python3 -m eventbus status                  # 事件统计
+python3 -m eventbus route DATA_GAP          # 查路由
 
-### Option 1: Cron-based Polling (推荐，最简单)
+# 发射事件
+python3 -m eventbus emit DATA_GAP \
+  --source-team ecommerce-team \
+  --source-role RADAR \
+  --severity HIGH \
+  --context "需要补充蓝牙耳机数据"
 
-```
-cron job: 每60秒扫描 events/pending/
-  → 有新事件 → 读取event_type → 查路由表 → spawn目标团队
-  → 将事件移到 events/processing/
-  → 团队完成后移到 events/resolved/
-```
+# 运行
+python3 -m eventbus run                     # 单次poll
+python3 -m eventbus run --interval 30       # 持续poll
+python3 -m eventbus run --live              # 直接spawn sub-agent
+python3 -m eventbus run --daemon            # 后台daemon
 
-CONDUCTOR prompt 注入：
+# 监控
+python3 -m eventbus watchdog                # 健康检查
+python3 -m eventbus watchdog --fix          # 自动修复
+python3 -m eventbus watchdog --dashboard    # Dashboard
+python3 -m eventbus watchdog --loop         # 持续监控
 
-```markdown
-## 跨团队事件协议
+# 链路追踪
+python3 -m eventbus trace <chain_id/event_id/keyword>
 
-你在执行任务时，如果遇到以下情况，必须写事件文件而不是放弃：
+# Registry
+python3 -m eventbus registry --scan         # 扫描团队能力
 
-1. **数据不够** → 写 DATA_GAP 事件，说明需要什么数据、什么格式
-2. **采集被拦** → 写 CRAWL_BLOCKED 事件，说明平台、拦截方式、已完成进度
-3. **数据就绪** → 写 DATA_READY 事件，说明数据路径、格式、记录数
-4. **安全事件** → 写 SECURITY_INCIDENT 事件，说明平台、封禁类型
+# DataBus
+python3 -m eventbus data list               # 列出数据文件
+python3 -m eventbus data validate <ref>     # Schema验证
 
-事件文件格式见 framework/EVENT-BUS.md
-写入路径: workspace/events/pending/{timestamp}-{EVENT_TYPE}.md
-```
+# 成本
+python3 -m eventbus cost                    # 预算报告
+python3 -m eventbus cost --set chain-xxx 100000  # 设置预算
 
-### Option 2: CONDUCTOR Inline Detection (无需cron)
+# 调度器
+python3 -m eventbus scheduler               # 调度状态
+python3 -m eventbus scheduler --chains      # 活跃链路
 
-在每个团队的 ORCHESTRATOR.md 中加入事件检测逻辑：
-
-```markdown
-## 执行前检查
-
-1. 扫描 events/pending/ 中 target_team 为本团队的事件
-2. 如有待处理事件 → 优先处理事件（事件驱动模式）
-3. 无事件 → 正常执行用户指令
-
-## 执行后检查
-
-1. 本次执行是否有未解决的阻断？
-2. 有 → 按事件类型表写事件
-3. 将处理完的事件移到 events/resolved/
-```
-
-### Recommended: Hybrid
-
-- Cron 每60秒轮询 events/pending/ → 保证事件不丢
-- CONDUCTOR 执行时也检查 events/ → 减少延迟
-- 两者同时存在，互为兜底
-
----
-
-## Event Bus Directory Structure
-
-```
-workspace/
-├── events/
-│   ├── pending/          # 待处理事件
-│   ├── processing/       # 正在处理（已dispatch目标团队）
-│   ├── resolved/         # 已解决（保留7天后归档）
-│   └── failed/           # 处理失败（需人工介入）
-├── ecommerce-team/
-├── data-collection-team/
-├── arc-team/
-└── framework/
-    ├── EVENT-BUS.md       # 本文件
-    └── TEAM-ROUTER.md     # 团队路由（已有）
+# 自进化
+python3 -m eventbus shortcut DATA_GAP       # 查shortcut
 ```
 
----
-
-## Callback Protocol
-
-事件的 `callback` 字段定义结果如何回流：
+### 配置（eventbus.yaml）
 
 ```yaml
-callback:
-  team: ecommerce-team              # 结果返回给谁
-  write_to: "blackboard/MARKET-SIGNALS.md"  # 结果写到哪里
-  resume_role: RADAR                 # 哪个角色继续执行
-  resume_context: |                  # 注入上下文
-    数据已补齐，请读取 data-collection-team/warehouse/cleaned/
-    并继续品类评估分析。
+# eventbus.yaml — 放在workspace根目录
+workspace_dir: "."
+poll_interval: 60              # 轮询间隔（秒）
+max_chain_depth: 5             # 事件链最大深度
+dedup_window: 3600             # 去重窗口（秒）
+processing_timeout: 1800       # processing超时（秒）
+resolved_retention: 7          # resolved保留天数
+dispatch_mode: "cron"          # cron | live | default
+dispatch_timeout: 300          # sub-agent超时
+bus_mode: "cron"               # cron | daemon
 ```
 
-目标团队完成后：
-1. 将结果写入 callback.write_to
-2. 写 resolved 事件（包含结果摘要）
-3. 如有 resume_role → Event Bus 自动 re-dispatch 原始团队的该角色
+### CronDispatcher工作流
 
----
+```
+EventBus.process_event()
+  │
+  ▼
+CronDispatcher.execute(team, mode, event, prompt)
+  │
+  ├─ DataBus.inject_data_refs(event)     # 注入数据引用
+  │
+  ├─ 写 DispatchRequest YAML
+  │   → events/.dispatch/20260301_120000_arc-team_abc12345.yaml
+  │
+  └─ return True
+       │
+       ▼
+Watchdog cron (定时扫描 .dispatch/)
+  │
+  ├─ 读取 status=pending 的request
+  ├─ openclaw spawn --task "..." --label team-dispatch
+  ├─ 标记 status=dispatched
+  │
+  └─ sub-agent完成 → 写回事件到 events/pending/
+```
 
-## Safety Rules
+### chain_id链路追踪
 
-1. **事件链最大深度：5** — 防止无限循环（A→B→C→A→B...）
-2. **同类事件去重** — 同一 source_team + event_type + 相同context，60分钟内不重复触发
-3. **CRITICAL事件通知用户** — severity=CRITICAL 的事件除了自动路由，还必须通知用户
-4. **failed事件人工介入** — 目标团队处理失败 → 移到 failed/ → 通知用户
-5. **事件不可篡改** — pending/ 中的事件只能被 Event Bus 移动，不能被团队修改
-6. **超时机制** — processing/ 中超过30分钟未resolved → 标记failed → 通知用户
+每条事件链共享同一个 `chain_id`：
 
----
+```
+chain_id: "chain-abc123"
 
-## Integration with TEAM-ROUTER.md
+  [depth=0] DATA_GAP (ecommerce→data-collection)
+    └─[depth=1] CRAWL_BLOCKED (data-collection→arc)
+        └─[depth=2] DEFENSE_REPORT (arc→data-collection)
+            └─[depth=3] DATA_READY (data-collection→ecommerce)
+```
 
-Event Bus 是 TEAM-ROUTER 的补充，不是替代：
+用 `trace` 命令可视化：
+```bash
+PYTHONPATH=framework python3 -m eventbus trace chain-abc123
+```
 
-| 场景 | 使用 |
-|------|------|
-| 用户直接下达指令 | TEAM-ROUTER（关键词/意图匹配） |
-| 团队执行中发现需要其他团队 | EVENT-BUS（事件驱动） |
-| 用户说"评估XX品类"只需一个团队 | TEAM-ROUTER |
-| 用户说"评估XX品类"触发了数据采集和反爬 | TEAM-ROUTER启动 → EVENT-BUS接力 |
+输出：
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Event Chain: chain-abc123
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+abc12345 [DATA_GAP] ecommerce-team/RADAR ⏳
+│  ├→ def67890 [CRAWL_BLOCKED] data-collection-team/SPIDER 🔄
+│  │  ├→ ghi90123 [DEFENSE_REPORT] arc-team/SHIELD ✅
+│  │  │  ├→ jkl45678 [DATA_READY] data-collection-team/SPIDER ✅
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Total: 4 events | Resolved: 2/4
+```
 
-两者结合 = **用户触发 + 自动接力**，完整的公司级工作流。
+### 功能清单
+
+| 优先级 | 功能 | 状态 |
+|--------|------|------|
+| **P0** | EventBus core（scan/route/dispatch） | ✅ |
+| **P0** | Event YAML解析 + 状态机 | ✅ |
+| **P0** | 双轨路由（静态+动态） | ✅ |
+| **P0** | 3种Dispatcher | ✅ |
+| **P0** | CLI（12+子命令） | ✅ |
+| **P0** | 标准化事件模板 | ✅ |
+| **P1** | Watchdog V3（5种检查+自动修复） | ✅ |
+| **P1** | CronDispatcher + DispatchRequest | ✅ |
+| **P1** | Dynamic Registry | ✅ |
+| **P1** | DataBus + Schema验证 | ✅ |
+| **P1** | MemoryBridge | ✅ |
+| **P1** | CostController | ✅ |
+| **P1** | Parallel Scheduler | ✅ |
+| **P2** | Evolver自进化 | ✅ |
+| **P2** | Analyzer + Profiler + Predictor | ✅ |
+| **P2** | History + Recovery | ✅ |
+| **P2** | Chain trace可视化 | ✅ |
+| **P3** | Priority Queue（severity排序） | ✅ |
+| **P3** | Severity→Model映射 | ✅ |

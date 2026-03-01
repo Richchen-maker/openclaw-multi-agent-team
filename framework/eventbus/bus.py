@@ -42,10 +42,14 @@ class EventBus:
 
         if dispatcher is not None:
             self.dispatcher = dispatcher
-        elif self.config.get("dispatch_mode") == "live" or self._check_openclaw_available():
+        elif self.config.get("dispatch_mode") == "live":
             from .dispatcher import OpenClawDispatcher
             self.dispatcher = OpenClawDispatcher(self.workspace_dir, self.config)
             logger.info("Using OpenClawDispatcher (live mode)")
+        elif self.config.get("dispatch_mode") == "cron":
+            from .dispatcher import CronDispatcher
+            self.dispatcher = CronDispatcher(self.workspace_dir, self.config)
+            logger.info("Using CronDispatcher (cron mode)")
         else:
             self.dispatcher = Dispatcher()
             logger.info("Using DefaultDispatcher (dry-run mode)")

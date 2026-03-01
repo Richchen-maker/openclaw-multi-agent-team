@@ -88,6 +88,24 @@ class Event:
         return self.metadata.get("target_mode")
 
     @property
+    def chain_id(self) -> str:
+        """Chain ID for linking related events. Root events use event_id[:8]."""
+        return self.metadata.get("chain_id", self.event_id[:8])
+
+    @chain_id.setter
+    def chain_id(self, value: str) -> None:
+        self.metadata["chain_id"] = value
+
+    @property
+    def parent_event_id(self) -> str | None:
+        return self.metadata.get("parent_event_id")
+
+    @parent_event_id.setter
+    def parent_event_id(self, value: str | None) -> None:
+        if value is not None:
+            self.metadata["parent_event_id"] = value
+
+    @property
     def data_refs(self) -> list[dict[str, Any]]:
         """数据引用列表（每个元素是 {type, path, schema?, description?}）。"""
         return self.metadata.get("data_refs", [])
@@ -160,6 +178,8 @@ class Event:
         target_team: str | None = None,
         target_mode: str | None = None,
         chain_depth: int = 0,
+        chain_id: str | None = None,
+        parent_event_id: str | None = None,
         callback: dict[str, Any] | None = None,
         data_refs: list[dict[str, Any]] | None = None,
         events_dir: Path | None = None,
@@ -192,6 +212,17 @@ class Event:
             "status": "pending",
             "chain_depth": chain_depth,
         }
+        # chain_id: inherit from parent or derive from event_id[:8]
+        eid = metadata["event_id"]
+        if chain_id:
+            metadata["chain_id"] = chain_id
+        elif chain_depth == 0:
+            metadata["chain_id"] = eid[:8]
+        # For chain_depth > 0 without explicit chain_id, chain_id property defaults to event_id[:8]
+
+        if parent_event_id:
+            metadata["parent_event_id"] = parent_event_id
+
         if target_team:
             metadata["target_team"] = target_team
         if target_mode:
