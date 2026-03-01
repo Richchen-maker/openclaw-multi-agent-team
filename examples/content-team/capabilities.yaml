@@ -1,0 +1,6 @@
+team: content-team
+description: "内容创作、文案生成、多平台发布"
+capabilities:
+  - event_type: DECISION_COMPLETE
+    modes: [A]
+    description: "基于决策结果生成营销内容和产品文案"
