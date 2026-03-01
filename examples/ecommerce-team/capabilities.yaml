@@ -1,0 +1,9 @@
+team: ecommerce-team
+description: "电商品类分析、定价策略、市场决策"
+capabilities:
+  - event_type: DATA_READY
+    modes: [A]
+    description: "消费采集数据，完成品类分析和定价决策"
+  - event_type: MARKET_SIGNAL
+    modes: [A]
+    description: "处理市场信号，评估是否需要调整策略"

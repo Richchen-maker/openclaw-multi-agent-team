@@ -7,6 +7,7 @@ Hardcoded defaults, overridable via config.
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -26,8 +27,21 @@ DEFAULT_ROUTES: dict[str, dict[str, str]] = {
 class Router:
     """Route events to target teams based on event_type."""
 
-    def __init__(self, routes: dict[str, dict[str, str]] | None = None) -> None:
-        self.routes = routes if routes is not None else dict(DEFAULT_ROUTES)
+    def __init__(self, routes: dict[str, dict[str, str]] | None = None, workspace_dir: Path | None = None) -> None:
+        if routes is not None:
+            self.routes = routes
+        elif workspace_dir is not None:
+            # 尝试动态发现
+            from .registry import Registry
+            reg = Registry(workspace_dir)
+            count = reg.scan()
+            if count > 0:
+                self.routes = reg.get_all_routes()
+                logger.info("Dynamic routes loaded from %d teams", count)
+            else:
+                self.routes = dict(DEFAULT_ROUTES)
+        else:
+            self.routes = dict(DEFAULT_ROUTES)
 
     def resolve(self, event_type: str) -> dict[str, str] | None:
         """Resolve event_type to route info.

@@ -1,0 +1,12 @@
+team: data-collection-team
+description: "多平台数据采集、清洗、入库"
+capabilities:
+  - event_type: DATA_GAP
+    modes: [A]
+    description: "填补数据缺口，采集指定平台数据"
+  - event_type: DEFENSE_REPORT
+    modes: [A]
+    description: "接收ARC绕过方案，带策略重试采集"
+  - event_type: ANOMALY
+    modes: [B]
+    description: "处理数据异常，验证和修复"

@@ -1,0 +1,12 @@
+team: arc-team
+description: "反反爬、安全攻防、防御评估"
+capabilities:
+  - event_type: CRAWL_BLOCKED
+    modes: [C]
+    description: "应急响应：分析拦截原因，输出绕过方案"
+  - event_type: CRAWL_STRATEGY
+    modes: [B]
+    description: "预防性评估：采集前分析目标平台防御体系"
+  - event_type: SECURITY_INCIDENT
+    modes: [C]
+    description: "安全事件响应：IP封禁、账号异常等"

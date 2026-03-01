@@ -21,6 +21,9 @@ from .dispatcher import Dispatcher
 logger = logging.getLogger(__name__)
 
 
+SEVERITY_ORDER = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3, "INFO": 4}
+
+
 class EventBus:
     """Core event bus runtime."""
 
@@ -58,6 +61,11 @@ class EventBus:
         """Check if the openclaw CLI is available in PATH."""
         import shutil
         return shutil.which("openclaw") is not None
+
+    @staticmethod
+    def _sort_by_priority(events: list[Event]) -> list[Event]:
+        """按severity排序，CRITICAL最先处理"""
+        return sorted(events, key=lambda e: SEVERITY_ORDER.get(e.severity, 99))
 
     def scan(self) -> list[Event]:
         """Scan pending/ directory for unprocessed events.
@@ -192,6 +200,7 @@ class EventBus:
         self._cleanup_processing_timeout()
 
         events = self.scan()
+        events = self._sort_by_priority(events)
         processed = 0
         for event in events:
             route_info = self.route(event)

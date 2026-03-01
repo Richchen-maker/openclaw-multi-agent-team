@@ -64,6 +64,10 @@ def _build_parser() -> argparse.ArgumentParser:
     wd_p.add_argument("--loop", action="store_true", help="Continuous monitoring")
     wd_p.add_argument("--interval", type=int, default=120, help="Loop interval in seconds")
 
+    # registry
+    reg_p = sub.add_parser("registry", help="Show team capability registry")
+    reg_p.add_argument("--scan", action="store_true", help="Force rescan")
+
     # data
     data_p = sub.add_parser("data", help="Data bus operations")
     data_sub = data_p.add_subparsers(dest="data_command", required=True)
@@ -193,6 +197,13 @@ def main(argv: list[str] | None = None) -> int:
                 tag = "✅" if ok else "❌"
                 print(f"  {tag} {alert.check_type} [{alert.event_id[:8] if alert.event_id else '-'}]: {alert.recovery_action}")
         return 0 if report.status == "HEALTHY" else 1
+
+    elif args.command == "registry":
+        from .registry import Registry
+        reg = Registry(workspace)
+        count = reg.scan()
+        print(reg.format_registry())
+        return 0
 
     elif args.command == "data":
         databus = DataBus(workspace)
