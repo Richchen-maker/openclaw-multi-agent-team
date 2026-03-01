@@ -81,6 +81,27 @@ def _build_parser() -> argparse.ArgumentParser:
     data_validate_p = data_sub.add_parser("validate", help="Validate data_refs in an event file")
     data_validate_p.add_argument("event_file", type=Path, help="Path to event .md file")
 
+    # trace
+    trace_p = sub.add_parser("trace", help="Visualize event chain")
+    trace_p.add_argument("prefix", help="Event ID prefix to trace")
+
+    # knowledge
+    know_p = sub.add_parser("knowledge", help="Knowledge base operations")
+    know_sub = know_p.add_subparsers(dest="know_command", required=True)
+
+    know_list_p = know_sub.add_parser("list", help="List knowledge entries")
+    know_list_p.add_argument("--domain", default=None, help="Filter by domain")
+
+    know_query_p = know_sub.add_parser("query", help="Search knowledge")
+    know_query_p.add_argument("keywords", help="Search keywords")
+
+    know_sub.add_parser("stats", help="Knowledge base statistics")
+
+    # cost
+    cost_p = sub.add_parser("cost", help="Cost controller")
+    cost_p.add_argument("--set", nargs=2, metavar=("CHAIN_ID", "BUDGET"), default=None,
+                        help="Set budget: CHAIN_ID MAX_TOKENS")
+
     return parser
 
 
@@ -243,7 +264,109 @@ def main(argv: list[str] | None = None) -> int:
                     all_ok = False
             return 0 if all_ok else 1
 
+    elif args.command == "trace":
+        cmd_trace(args, workspace)
+        return 0
+
+    elif args.command == "knowledge":
+        from .memory_bridge import MemoryBridge
+        mb = MemoryBridge(workspace)
+
+        if args.know_command == "list":
+            results = mb.query(domain=args.domain)
+            if not results:
+                print("No knowledge entries found.")
+            else:
+                print(f"Knowledge entries ({len(results)}):")
+                for r in results:
+                    print(f"  [{r['domain']}] {r['topic']} — from {r['source_team']} ({r['updated_at'][:10]})")
+                    if r['preview']:
+                        print(f"    {r['preview'][:80]}...")
+            return 0
+
+        elif args.know_command == "query":
+            # Search across all domains using keywords in topic names
+            all_results = mb.query()
+            keywords = args.keywords.lower().split()
+            matched = []
+            for r in all_results:
+                text = f"{r['topic']} {r['preview']}".lower()
+                if any(k in text for k in keywords):
+                    matched.append(r)
+            if not matched:
+                print(f"No knowledge matching '{args.keywords}'")
+            else:
+                print(f"Found {len(matched)} result(s):")
+                for r in matched:
+                    print(f"  [{r['domain']}] {r['topic']} — from {r['source_team']}")
+                    print(f"    {r['preview'][:120]}")
+            return 0
+
+        elif args.know_command == "stats":
+            s = mb.stats()
+            print(f"Knowledge Base: {s['total']} entries")
+            for domain, count in s['by_domain'].items():
+                print(f"  {domain}: {count}")
+            return 0
+
+    elif args.command == "cost":
+        from .cost_controller import CostController
+        cc = CostController(workspace)
+
+        if args.set:
+            chain_id, budget_str = args.set
+            cc.set_budget(chain_id, int(budget_str))
+            print(f"Budget set: {chain_id} = {int(budget_str):,} tokens")
+        else:
+            print(cc.format_report())
+        return 0
+
     return 1
+
+
+def cmd_trace(args, workspace: Path):
+    """可视化事件链路"""
+    prefix = args.prefix
+    events_dir = workspace / "events"
+    all_events = []
+
+    status_emoji = {"pending": "⏳", "processing": "🔄", "resolved": "✅", "failed": "❌"}
+
+    for status_dir in ["pending", "processing", "resolved", "failed"]:
+        dir_path = events_dir / status_dir
+        if not dir_path.exists():
+            continue
+        for f in dir_path.glob("*.md"):
+            try:
+                event = Event.from_file(f)
+                if prefix.lower() in event.event_id.lower():
+                    all_events.append((event, status_dir))
+            except Exception:
+                continue
+
+    if not all_events:
+        print(f"No events found matching '{prefix}'")
+        return
+
+    all_events.sort(key=lambda x: x[0].chain_depth)
+
+    print(f"\n{'━' * 50}")
+    print(f"Event Chain: {prefix}")
+    print(f"{'━' * 50}")
+
+    for event, status in all_events:
+        depth = event.chain_depth
+        emoji = status_emoji.get(status, "?")
+        indent = "│  " * depth
+        connector = "├→ " if depth > 0 else ""
+        source_role = event.metadata.get("source_role", "")
+        line = f"{indent}{connector}{event.event_id[:20]} [{event.event_type}] {event.source_team}/{source_role} {emoji}"
+        print(line)
+
+    print(f"{'━' * 50}")
+    total = len(all_events)
+    resolved = sum(1 for _, s in all_events if s == "resolved")
+    print(f"Total: {total} events | Resolved: {resolved}/{total}")
 
 
 if __name__ == "__main__":
