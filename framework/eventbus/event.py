@@ -74,6 +74,15 @@ class Event:
     def target_mode(self) -> str | None:
         return self.metadata.get("target_mode")
 
+    @property
+    def data_refs(self) -> list[dict[str, Any]]:
+        """数据引用列表（每个元素是 {type, path, schema?, description?}）。"""
+        return self.metadata.get("data_refs", [])
+
+    @data_refs.setter
+    def data_refs(self, value: list[dict[str, Any]]) -> None:
+        self.metadata["data_refs"] = value
+
     # -- 序列化 --
 
     @classmethod
@@ -139,6 +148,7 @@ class Event:
         target_mode: str | None = None,
         chain_depth: int = 0,
         callback: dict[str, Any] | None = None,
+        data_refs: list[dict[str, Any]] | None = None,
         events_dir: Path | None = None,
     ) -> Event:
         """Create a new event and optionally write it to pending/.
@@ -175,6 +185,8 @@ class Event:
             metadata["target_mode"] = target_mode
         if callback:
             metadata["callback"] = callback
+        if data_refs:
+            metadata["data_refs"] = data_refs
 
         event = cls(metadata=metadata, body=body)
 

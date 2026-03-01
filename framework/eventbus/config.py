@@ -21,6 +21,10 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "dedup_window": 3600,         # 去重窗口（秒）
     "processing_timeout": 1800,   # processing超时（秒）
     "resolved_retention": 7,      # resolved事件保留天数
+    "dispatch_model": None,        # sub-agent模型override，None=默认
+    "dispatch_timeout": 300,       # sub-agent超时秒数
+    "dispatch_mode": "default",    # "default" (print) 或 "live" (spawn)
+    "daemon_pid_file": "eventbus.pid",  # PID文件名（相对于events/.watchdog/）
 }
 
 

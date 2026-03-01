@@ -35,7 +35,16 @@ class EventBus:
         self.events_dir = self.workspace_dir / "events"
         self.router = Router(routes)
         self.config = config or load_config(self.workspace_dir / "eventbus.yaml")
-        self.dispatcher = dispatcher or Dispatcher()
+
+        if dispatcher is not None:
+            self.dispatcher = dispatcher
+        elif self.config.get("dispatch_mode") == "live" or self._check_openclaw_available():
+            from .dispatcher import OpenClawDispatcher
+            self.dispatcher = OpenClawDispatcher(self.workspace_dir, self.config)
+            logger.info("Using OpenClawDispatcher (live mode)")
+        else:
+            self.dispatcher = Dispatcher()
+            logger.info("Using DefaultDispatcher (dry-run mode)")
 
         # 确保4个子目录存在
         for d in ["pending", "processing", "resolved", "failed"]:
@@ -43,6 +52,12 @@ class EventBus:
 
         # 去重追踪: (source_team, event_type) → last_timestamp
         self._dedup_cache: dict[tuple[str, str], float] = {}
+
+    @staticmethod
+    def _check_openclaw_available() -> bool:
+        """Check if the openclaw CLI is available in PATH."""
+        import shutil
+        return shutil.which("openclaw") is not None
 
     def scan(self) -> list[Event]:
         """Scan pending/ directory for unprocessed events.

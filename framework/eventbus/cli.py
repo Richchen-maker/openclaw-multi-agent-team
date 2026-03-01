@@ -18,6 +18,7 @@ from pathlib import Path
 
 from .bus import EventBus
 from .config import load_config
+from .databus import DataBus, DataRef
 from .event import Event
 from .router import Router
 from .watchdog import Watchdog, watchdog_loop
@@ -44,6 +45,8 @@ def _build_parser() -> argparse.ArgumentParser:
     # run
     run_p = sub.add_parser("run", help="Start event poll loop")
     run_p.add_argument("--interval", type=int, default=None, help="Poll interval (seconds)")
+    run_p.add_argument("--daemon", action="store_true", help="Run as background daemon (continuous poll)")
+    run_p.add_argument("--live", action="store_true", help="Use OpenClawDispatcher (actually spawn sub-agents)")
 
     # status
     sub.add_parser("status", help="Show event directory statistics")
@@ -60,6 +63,19 @@ def _build_parser() -> argparse.ArgumentParser:
                        help="Show history (24h, 7d, etc.)")
     wd_p.add_argument("--loop", action="store_true", help="Continuous monitoring")
     wd_p.add_argument("--interval", type=int, default=120, help="Loop interval in seconds")
+
+    # data
+    data_p = sub.add_parser("data", help="Data bus operations")
+    data_sub = data_p.add_subparsers(dest="data_command", required=True)
+
+    data_list_p = data_sub.add_parser("list", help="List available data files")
+    data_list_p.add_argument("--team", default=None, help="Filter by team name")
+    data_list_p.add_argument("--schema", default=None, help="Filter by schema name")
+
+    data_sub.add_parser("schemas", help="List all available schemas")
+
+    data_validate_p = data_sub.add_parser("validate", help="Validate data_refs in an event file")
+    data_validate_p.add_argument("event_file", type=Path, help="Path to event .md file")
 
     return parser
 
@@ -98,6 +114,29 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     elif args.command == "run":
+        # --live: force OpenClawDispatcher
+        if args.live:
+            from .dispatcher import OpenClawDispatcher
+            bus.dispatcher = OpenClawDispatcher(workspace, config)
+
+        # --daemon: fork to background, write PID file
+        if args.daemon:
+            import os
+            pid_dir = workspace / "events" / ".watchdog"
+            pid_dir.mkdir(parents=True, exist_ok=True)
+            pid_file = pid_dir / config.get("daemon_pid_file", "eventbus.pid")
+
+            child_pid = os.fork()
+            if child_pid > 0:
+                # Parent: write child PID and exit
+                pid_file.write_text(str(child_pid))
+                print(f"EventBus daemon started (PID {child_pid}), pid file: {pid_file}")
+                return 0
+            else:
+                # Child: detach and run
+                os.setsid()
+                sys.stdin.close()
+
         bus.run_loop(interval=args.interval)
         return 0
 
@@ -154,6 +193,44 @@ def main(argv: list[str] | None = None) -> int:
                 tag = "✅" if ok else "❌"
                 print(f"  {tag} {alert.check_type} [{alert.event_id[:8] if alert.event_id else '-'}]: {alert.recovery_action}")
         return 0 if report.status == "HEALTHY" else 1
+
+    elif args.command == "data":
+        databus = DataBus(workspace)
+
+        if args.data_command == "list":
+            refs = databus.find_data(team=args.team, schema=args.schema)
+            if not refs:
+                print("No data files found.")
+            else:
+                print(f"Found {len(refs)} data file(s):")
+                for ref in refs:
+                    status = "✅" if ref.exists(workspace) else "❌"
+                    print(f"  {status} [{ref.ref_type}] {ref.path}")
+                    if ref.description:
+                        print(f"     {ref.description}")
+            return 0
+
+        elif args.data_command == "schemas":
+            schemas = databus.list_schemas()
+            print(f"Available schemas ({len(schemas)}):")
+            for name, desc in schemas.items():
+                print(f"  {name}: {desc}")
+            return 0
+
+        elif args.data_command == "validate":
+            ev = Event.from_file(args.event_file.resolve())
+            refs = databus.parse_refs(ev)
+            if not refs:
+                print("No data_refs in this event.")
+                return 0
+            print(f"Validating {len(refs)} data ref(s):")
+            all_ok = True
+            for ref, valid, msg in databus.validate_refs(refs):
+                tag = "✅" if valid else "❌"
+                print(f"  {tag} {ref.path} — {msg}")
+                if not valid:
+                    all_ok = False
+            return 0 if all_ok else 1
 
     return 1
 
