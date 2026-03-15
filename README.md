@@ -1,271 +1,254 @@
 # 🐊 OpenClaw Multi-Agent Team Framework
 
-**From single teams to intelligent multi-team orchestration.**
+**One person. An entire company's analytical firepower.**
 
-从单团队到多团队智能协作调度 —— 一个人指挥一家公司。
-
----
-
-## What's New: Multi-Team Intelligent Orchestrator v5.3.1
-
-The framework has evolved from individual team coordination to **cross-team intelligent orchestration**:
-
-- 🧬 **DNA Foundation** — 9 inherited genes providing consistent architecture across all task patterns
-- 🔄 **11-Step Pipeline** — From complexity assessment → team assembly → parallel execution → cross-validation → quality audit → synthesis → post-task reflection
-- 📊 **3 Execution Tiers** — Lite (2-3 agents) / Standard (4-6, with full QA) / Full (6-8, with RED-TEAM)
-- 🧠 **6 Self-Evolution Gears** — Evolution ledger, model abstraction, cross-pattern learning, capability frontier, knowledge decay engine, structured experience extraction
-- 🎯 **9 Task Patterns** — Ecommerce, Competitive Analysis, Business Plan, Content Matrix, Tech Evaluation, Intelligence, and more
-- 👥 **60+ Agent Roles** — Analysis, Research, Creative, Intelligence, Engineering, Visualization, Review (7 roles), Audit (7 roles)
-- ✅ **Independent Quality Assurance** — Separate Review Team + Audit Team, never participate in execution
-
-> **The orchestrator doesn't just dispatch tasks — it learns from every execution, cross-pollinates insights between patterns, and gets stronger over time.**
+一个人，一家公司的分析火力。
 
 ---
 
-## Architecture Evolution
+## The Problem
+
+You have a complex task — say, "evaluate whether we should enter the collaborative robot market in Southeast Asia."
+
+A traditional team would need: market researcher, competitive analyst, financial modeler, tech evaluator, content strategist, quality reviewer. **6+ people. 2-3 weeks. $20K+.**
+
+With this framework: **one command. 15 minutes. 3-8 AI agents working in parallel, cross-validating each other's work, with independent quality review.**
+
+---
+
+## What This Is
+
+A **production-grade multi-agent orchestration system** that:
+
+1. **Understands what you need** — Analyzes task complexity, matches it to the right pattern
+2. **Assembles the right team** — Dynamically selects from 60+ specialized roles
+3. **Runs them in parallel** — Not sequentially. Not in a chain. True parallel execution with wave dependencies
+4. **Cross-validates everything** — Independent VERIFIER catches contradictions, flags weak sources, scores confidence
+5. **Quality-gates the output** — Separate Review Team (7 roles) + Audit Team (7 roles) that never participated in execution
+6. **Learns from every run** — Extracts lessons, cross-pollinates between patterns, tracks capability growth
+
+**This is not a demo. It's a battle-tested system running real business decisions.**
+
+---
+
+## 🆕 Multi-Team Intelligent Orchestrator v5.3.1
+
+The core evolution: from managing individual teams to **intelligent cross-team orchestration**.
+
+### DNA Foundation — 9 Genes Every Pattern Inherits
+
+Think of genes as architectural invariants. No matter what task pattern you run, these 9 properties are guaranteed:
+
+| Gene | What It Guarantees |
+|------|--------------------|
+| **Layered Architecture** | Every task flows through Collection → Processing → Cross-Validation → Evolution |
+| **5 Core Protocols** | Multi-source verification (MVP-P), Self-evolution (SEP), Domain knowledge registry (DKR), Work-as-code (WaC), Real-time status (RSP) |
+| **Real-Time Progress** | You see what's happening *while it happens*, not after. Every agent reports on completion |
+| **Structured Role Prompts** | Each role has a 7-element prompt template: mission, context, constraints, tools, output format, quality criteria, self-check |
+| **Domain Red Lines** | Three tiers: 🔴 Never violate / 🟡 Domain-specific / 🟢 Best practice |
+| **Deployment Tiers** | Lite (2-3 agents, fast) → Standard (4-6, full QA) → Full (6-8, with adversarial review) |
+| **Data Freshness (TTL)** | Every data point has an expiry. Prices ≤1 hour. News ≤7 days. Reports ≤90 days. Expired data is flagged, not silently cited |
+| **Knowledge Crystallization** | After every task: extract entities, strategies, pitfalls, preferences, and reusable frameworks |
+| **Confidence Ratings** | Every conclusion carries ⭐-⭐⭐⭐⭐⭐ confidence. Single source = ≤⭐⭐⭐. Multi-source verified = ⭐⭐⭐⭐+ |
+
+### 11-Step Execution Pipeline
+
+Not a vague "plan → execute → report" loop. A strict, ordered pipeline with hard dependencies:
 
 ```
-v1.0 Single Team                    v5.3.1 Multi-Team Orchestration
-─────────────────                   ─────────────────────────────────
-
-┌─────────────┐                     ┌──────────────────────────────┐
-│  CONDUCTOR  │                     │     DECISION ENGINE          │
-│  (1 team)   │                     │  Complexity → Pattern Match  │
-└──────┬──────┘                     │  → Experience Recall         │
-       │                            │  → Team Assembly             │
-  ┌────┼────┐                       └──────────┬───────────────────┘
-  ▼    ▼    ▼                                  │
-┌───┐┌───┐┌───┐                     ┌──────────┼──────────┐
-│ A ││ B ││ C │                     ▼          ▼          ▼
-└─┬─┘└─┬─┘└─┬─┘                  Wave 1    Wave 2    Wave 3
-  │    │    │                    (parallel) (parallel) (parallel)
-  └────┼────┘                       │          │          │
-       ▼                            └──────────┼──────────┘
-┌─────────────┐                                ▼
-│  BLACKBOARD │                     ┌─────────────────────┐
-└─────────────┘                     │  VERIFIER (Step 5)  │
-                                    │  Cross-validation   │
-                                    └──────────┬──────────┘
-                                               ▼
-                                    ┌─────────────────────┐
-                                    │  P6 Quality Gate    │
-                                    │  Review + Audit     │
-                                    └──────────┬──────────┘
-                                               ▼
-                                    ┌─────────────────────┐
-                                    │  SYNTHESIZER        │
-                                    │  Final Report       │
-                                    └──────────┬──────────┘
-                                               ▼
-                                    ┌─────────────────────┐
-                                    │  POST-TASK          │
-                                    │  Reflection + Learn │
-                                    └─────────────────────┘
+Step 0   Complexity Check ───── Single-agent job? Skip orchestration. 2+ domains? Continue.
+Step 1   Pattern Match ──────── Match task to pattern(s). Hybrid tasks get multi-pattern treatment.
+Step 1.5 Experience Recall ──── Before executing, pull lessons from past runs. Don't repeat mistakes.
+Step 2   Team Assembly ──────── Select roles. Assign waves (parallel groups with dependencies).
+Step 3   Prompt Injection ───── Each agent gets: role prompt + shared intel + timestamps + domain rules.
+Step 4   Parallel Execution ─── All agents in a wave run simultaneously. Real-time progress panel.
+Step 5   VERIFIER ───────────── Independent cross-validation. TTL check. Confidence scoring.
+Step 6   P6 Quality Gate ────── Review Team (7 roles) + Audit Team (7 roles). Independent. Never skip.
+Step 7   Fix & Revalidate ───── Address findings. Re-verify. Max 1 rework cycle.
+Step 8   SYNTHESIZER ────────── Final report: 10 chapters, confidence-rated, actionable.
+Step 9   Post-Task Reflection ─ What worked? What didn't? Extract, crystallize, store.
 ```
 
----
+**Hard rule**: Step 8 cannot start before Step 6 passes. Step 6 cannot start before Step 5 completes. No shortcuts.
 
-## DNA Foundation: 9 Genes Every Pattern Inherits
+### 6 Self-Evolution Gears
 
-| Gene | Name | What It Does |
-|------|------|-------------|
-| 1 | Layered Architecture | Collection → Processing → Cross-Validation → Evolution |
-| 2 | 5 Core Protocols | MVP-P (multi-source verify) / SEP (self-evolution) / DKR (domain knowledge) / WaC (work-as-code) / RSP (real-time status) |
-| 3 | Real-Time Progress Panel | Live status dashboard — every agent reports on completion, not at the end |
-| 4 | Independent Role Prompts | Each role has a structured prompt template (7-element standard) |
-| 5 | Domain Red Lines | 🔴 Critical / 🟡 Domain-specific / 🟢 Best practice — three-tier constraints |
-| 6 | Deployment Tiers | Lite / Standard / Full — scale to task complexity |
-| 7 | TTL Data Freshness | Every data point has an expiry. Prices ≤1h, News ≤7d, Reports ≤90d |
-| 8 | Knowledge Crystallization | 5 types of post-task knowledge capture (entities, strategies, pitfalls, preferences, frameworks) |
-| 9 | Cross-Validation Standards | ⭐-⭐⭐⭐⭐⭐ confidence rating. Single source ≤⭐⭐⭐. Multi-source ≥⭐⭐⭐⭐ |
+Most agent frameworks are static. Run them 100 times, the 100th run is identical to the 1st.
 
----
+This system **compounds**:
 
-## 11-Step Execution Pipeline
-
-```
-Step 0   Complexity Check ─── Is this a multi-team task? (2+ domains → yes)
-Step 1   Pattern Match ────── Which pattern(s) fit? (A-H, or hybrid)
-Step 1.5 Experience Recall ── Pull lessons from experience-db before executing
-Step 2   Team Assembly ────── Select roles, set wave dependencies
-Step 3   Prompt Injection ─── Inject shared intel + TAP timestamps + domain rules
-Step 4   Parallel Execution ─ sessions_spawn all waves + real-time progress panel
-Step 5   VERIFIER ─────────── Cross-validation + TTL check + confidence scoring
-Step 6   P6 Quality Gate ──── Independent Review Team (7) + Audit Team (7)
-Step 7   Fix & Revalidate ─── Address P6 findings, re-verify
-Step 8   SYNTHESIZER ──────── Generate final report (10-chapter structure)
-Step 9   Post-Task Reflection  SEP self-evolution + knowledge crystallization
-```
-
----
-
-## Self-Evolution: 6 Gears
-
-The system doesn't just execute — it **evolves**:
-
-| Gear | Engine | Purpose |
-|------|--------|---------|
-| 1 | Evolution Ledger | Quantify progress: 13 metrics tracking VERSION/ROLES/QUALITY/COVERAGE trends |
-| 2 | Model Abstraction Protocol | 4-layer decoupling — 80% of system value is model-agnostic |
-| 3 | Cross-Pattern Learning | Extract reusable insights from one pattern, inject into others |
-| 4 | Capability Frontier | 🟢 Verified / 🟡 Untested / 🔴 Gap — directional growth map |
-| 5 | Knowledge Decay Engine | TTL-based freshness management, compression protocols, health metrics |
-| 6 | Structured Experience Extraction | Post-task: pollination check → ledger update → frontier update |
-
-**Vertical axis**: task → reflection → accumulation → recall (deeper each cycle)
-**Horizontal axis**: success in one pattern → pollinate → other patterns benefit
-**Meta axis**: quantified tracking + noise governance + directional growth
+| Gear | What It Does | Why It Matters |
+|------|-------------|----------------|
+| **Evolution Ledger** | Tracks 13 metrics across versions: roles, quality, coverage, pattern count | You can *see* whether the system is improving or degrading |
+| **Model Abstraction** | 4-layer decoupling: business logic / semantic / syntax / interface | Swap the underlying LLM without rewriting anything. 80% of value is model-agnostic |
+| **Cross-Pattern Learning** | Success in Pattern A → extract reusable insight → inject into Pattern C | Knowledge doesn't stay siloed. One breakthrough benefits all patterns |
+| **Capability Frontier** | Maps: 🟢 Verified / 🟡 Untested / 🔴 Gap | Know exactly where you're strong and where to grow |
+| **Knowledge Decay** | TTL-based freshness management with compression protocols | Old knowledge gets archived, not deleted. Signal-to-noise stays healthy |
+| **Structured Extraction** | Post-task: pollination check → ledger update → frontier update | Every task leaves the system stronger. Not optional — built into the pipeline |
 
 ---
 
 ## Task Patterns
 
-| Pattern | Domain | Trigger Words | Status |
-|---------|--------|---------------|--------|
-| A | E-commerce Analysis | SYCM / category analysis / market sizing | ✅ Open |
-| B | Patent Mining | patents / inventions / novelty | 🔒 Private |
-| C | Competitive Intelligence | competitors / SWOT / market landscape | ✅ Open |
-| D | Business Plan | BP / gov funding / project proposal | ✅ Open |
-| E | Content Matrix | content strategy / multi-platform / batch creation | ✅ Open |
-| F | Tech Evaluation | tech selection / architecture / solution comparison | ✅ Open |
-| H | Elite Intelligence | OSINT / FININT / due diligence / entity tracking | 🔒 Private |
-| R | R&D Innovation | systematic invention / TRIZ / tech gaps | 🔒 Private |
-| G | General | Anything not matching A-F/H/R — free-form team assembly | ✅ Open |
+| Pattern | Domain | What It Does | Status |
+|---------|--------|-------------|--------|
+| **A** E-commerce | Market/category analysis | SYCM data + competitor mapping + SEO + pricing strategy | ✅ Open |
+| **C** Competitive | Competitor intelligence | Feature matrix + SWOT + moat assessment + pricing comparison | ✅ Open |
+| **D** Business Plan | Proposals & funding | Market sizing + financial model + policy alignment + risk analysis | ✅ Open |
+| **E** Content Matrix | Multi-platform content | Platform strategy + batch creation + SEO + publishing calendar | ✅ Open |
+| **F** Tech Eval | Technology assessment | Architecture comparison + security audit + scalability + cost analysis | ✅ Open |
+| **G** General | Anything else | Free-form team assembly from the full role library | ✅ Open |
+| **B** Patent | Patent mining | 🔒 Private |
+| **H** Intelligence | OSINT/FININT | 🔒 Private |
+| **R** R&D Innovation | Systematic invention | 🔒 Private |
 
 ---
 
-## Role Library (60+ Roles across 11 Categories)
+## Quality: Not Optional
 
-**Analysis**: QUANT / INTEL / DEMAND / FORECAST / ANALYST-{X}
+### Review Team (7 Independent Roles)
+FACT-CHECK → LOGIC-CHECK → COVERAGE-CHECK → DEPTH-CHECK → BIAS-CHECK → ACTIONABILITY-CHECK → REVIEW-LEAD
 
-**Research**: SCHOLAR / POLICY / INDUSTRY
+### Audit Team (7 Independent Roles)  
+SEC-AUDIT → DATA-AUDIT → SOURCE-AUDIT → DELIVERY-AUDIT → COMPLIANCE-AUDIT → REPRODUCIBILITY-AUDIT → AUDIT-LEAD
 
-**Creative**: CREATIVE / WRITER / VISUAL / PLATFORM-{X}
-
-**Intelligence**: FUSION-LEAD / OSINT / FININT / GRAPH-ANALYST / PREDICTOR
-
-**Engineering**: CRAWLER / ENGINEER / INTEGRATOR
-
-**Visualization**: QUANT-VIZ / SEO-VIZ / FUNNEL-VIZ / STRATEGY-VIZ
-
-**Review Team** (7 roles): FACT-CHECK / LOGIC-CHECK / COVERAGE-CHECK / DEPTH-CHECK / BIAS-CHECK / ACTIONABILITY-CHECK / REVIEW-LEAD
-
-**Audit Team** (7 roles): SEC-AUDIT / DATA-AUDIT / SOURCE-AUDIT / DELIVERY-AUDIT / COMPLIANCE-AUDIT / REPRODUCIBILITY-AUDIT / AUDIT-LEAD
-
-**Meta**: RED-TEAM / SYNTHESIZER / VERIFIER
+**They never participate in execution. They only judge.** PASS/CONDITIONAL/FAIL. CONDITIONAL means fix and re-verify. FAIL means redo.
 
 ---
 
-## Quality Assurance: Hard Constraints
+## Architecture
 
-### 🔴 Iron Rules (Never Violate)
+```
+You: "Analyze collaborative robot market in Southeast Asia"
+                          │
+                ┌─────────▼──────────┐
+                │  DECISION ENGINE   │
+                │                    │
+                │  Complexity: High  │
+                │  Pattern: C + F    │
+                │  Tier: Standard    │
+                │  Recall: 3 lessons │
+                └─────────┬──────────┘
+                          │
+          ┌───────────────┼───────────────┐
+          ▼               ▼               ▼
+     ┌─────────┐    ┌─────────┐    ┌─────────┐
+     │ Wave 1  │    │ Wave 1  │    │ Wave 1  │
+     │ INTEL   │    │ QUANT   │    │ PRODUCT │
+     │ CORE    │    │ COMPARE │    │ TEARDOWN│
+     └────┬────┘    └────┬────┘    └────┬────┘
+          │              │              │
+          └──────────────┼──────────────┘
+                         ▼
+              ┌─────────────────────┐
+              │     VERIFIER        │
+              │  Cross-validate     │
+              │  Flag contradictions│
+              │  Score confidence   │
+              └──────────┬──────────┘
+                         ▼
+              ┌─────────────────────┐
+              │   P6 QUALITY GATE   │
+              │  7 Reviewers        │
+              │  7 Auditors         │
+              │  PASS / FAIL        │
+              └──────────┬──────────┘
+                         ▼
+              ┌─────────────────────┐
+              │   SYNTHESIZER       │
+              │  10-chapter report  │
+              │  Confidence-rated   │
+              │  Actionable         │
+              └──────────┬──────────┘
+                         ▼
+              ┌─────────────────────┐
+              │  POST-TASK          │
+              │  Learn. Store.      │
+              │  Get stronger.      │
+              └─────────────────────┘
+```
 
-| # | Constraint |
-|---|-----------|
-| H1 | Execution order is strict: VERIFIER → P6 → Fix → SYNTHESIZER (no skipping) |
-| H2 | VERIFIER must be an independent agent (not the orchestrator) |
-| H3 | SYNTHESIZER must be an independent agent (prevent copy-paste errors) |
-| H4 | P6 Quality Gate requires minimum 3 independent agents |
-| H5 | Sensitive data must never appear in web_search queries |
-| H6 | CONDITIONAL findings must be fixed and re-verified before delivery |
-| H7 | Real-time progress panel is mandatory (all tiers including Lite) |
-| H8 | Domain red-line 🔴 violations = task FAIL |
-| H9 | Core conclusions must carry confidence ratings (⭐-⭐⭐⭐⭐⭐) |
+---
+
+## 60+ Roles Across 11 Categories
+
+**Analysis**: QUANT / INTEL / DEMAND / FORECAST — the number crunchers
+
+**Research**: SCHOLAR / POLICY / INDUSTRY — deep domain expertise
+
+**Creative**: WRITER / VISUAL / PLATFORM-{X} — content production at scale
+
+**Intelligence**: FUSION-LEAD / OSINT / FININT / GRAPH-ANALYST / PREDICTOR — connect the dots
+
+**Engineering**: CRAWLER / ENGINEER / INTEGRATOR — build and integrate
+
+**Visualization**: QUANT-VIZ / SEO-VIZ / FUNNEL-VIZ / STRATEGY-VIZ — make data visual
+
+**Review** (7 roles): Independent quality validation
+
+**Audit** (7 roles): Independent compliance and reproducibility check
+
+**Meta**: RED-TEAM (adversarial challenge) / SYNTHESIZER (final integration) / VERIFIER (cross-validation)
+
+---
+
+## Quick Start
+
+### As an OpenClaw Skill
+```bash
+# Copy to your OpenClaw skills directory
+cp -r multi-team-orchestrator/ ~/.openclaw/workspace/skills/multi-team-orchestrator/
+
+# It activates automatically when a task needs 2+ professional domains
+# Or trigger manually with keywords: "multi-team analysis", "comprehensive research", etc.
+```
+
+### Build Your Own Team (Original Framework)
+```bash
+# See INSTALL.md for the single-team framework setup
+# 5 example teams included: ecommerce, data collection, content, security research, intelligence
+```
 
 ---
 
 ## Project Structure
 
 ```
-openclaw-multi-agent-team/
-├── README.md                          ← You are here
-├── LICENSE
-├── INSTALL.md
+├── multi-team-orchestrator/        ← 🆕 The orchestration brain (v5.3.1)
+│   ├── SKILL.md                    ← Decision engine + pipeline + 60+ roles + constraints
+│   ├── references/                 ← 5 open patterns + review/audit teams + evolution engines
+│   └── experience-db/             ← Self-evolution data store (empty templates to fill)
 │
-├── multi-team-orchestrator/           ← 🆕 Multi-Team Intelligent Orchestrator v5.3.1
-│   ├── SKILL.md                       ← Core: decision engine + pipeline + roles + constraints
-│   ├── CHANGELOG.md                   ← Version history
-│   ├── README.md                      ← Orchestrator-specific docs
-│   ├── references/
-│   │   ├── pattern-ecommerce.md       ← E-commerce analysis pattern
-│   │   ├── pattern-competitive.md     ← Competitive intelligence pattern
-│   │   ├── pattern-business-plan.md   ← Business plan pattern
-│   │   ├── pattern-content-matrix.md  ← Content matrix pattern
-│   │   ├── pattern-tech-eval.md       ← Tech evaluation pattern
-│   │   ├── team-review.md            ← Review team (7 role prompts)
-│   │   ├── team-audit.md             ← Audit team (7 role prompts)
-│   │   ├── model-abstraction-protocol.md  ← Model-agnostic design
-│   │   ├── cross-pattern-learning.md      ← Cross-pattern pollination
-│   │   └── knowledge-decay-engine.md      ← Knowledge freshness management
-│   └── experience-db/                ← Self-evolution data store (templates)
-│       ├── routing-patterns.md
-│       ├── prompt-evolution.md
-│       ├── team-performance.md
-│       ├── failure-cases.md
-│       ├── methodology-library.md
-│       ├── metrics.md
-│       ├── evolution-ledger.md
-│       ├── capability-frontier.md
-│       └── archive/
-│
-├── framework/                         ← Core framework (EventBus, Blackboard, Router)
-├── examples/                          ← Example teams
-│   ├── ecommerce-team/               ← E-commerce (6 roles)
-│   ├── data-collection-team/         ← Data engineering (6 roles)
-│   ├── content-team/                 ← Content creation (4 roles)
-│   ├── arc-team/                     ← Security research (6 roles)
-│   └── intelligence-team/            ← Intelligence analysis (4 roles)
-├── events/                            ← Event bus directories
-└── docs/                             ← Guides and architecture diagrams
+├── framework/                      ← Core single-team framework (EventBus, Blackboard, Router)
+├── examples/                       ← 5 example teams (ecommerce, data, content, security, intel)
+├── events/                         ← Event bus directories
+└── docs/                          ← Guides: customization, role design, troubleshooting
 ```
 
 ---
 
-## Getting Started
+## Why Not Just Use [Other Framework]?
 
-### Use as OpenClaw Skill
-```bash
-# Copy multi-team-orchestrator/ to your OpenClaw skills directory
-cp -r multi-team-orchestrator/ ~/.openclaw/workspace/skills/multi-team-orchestrator/
-
-# The orchestrator activates automatically when tasks need 2+ professional domains
-```
-
-### Build Your Own Team
-See [INSTALL.md](INSTALL.md) for the original team framework setup.
-See [docs/CUSTOMIZATION.md](docs/CUSTOMIZATION.md) for creating custom teams.
-
----
-
-## How It Works (30-Second Version)
-
-1. **You say**: "Analyze the competitive landscape of collaborative robots in China"
-2. **Decision engine** detects: 2+ domains needed → Pattern C (Competitive) → Standard tier
-3. **Team assembles**: INTEL-CORE + QUANT-COMPARE + PRODUCT-TEARDOWN + PRICING-STRATEGY + MOAT-ASSESSMENT
-4. **Parallel execution**: All agents run simultaneously, each with role-specific prompts and shared intelligence
-5. **VERIFIER** cross-checks all outputs, flags contradictions, scores confidence
-6. **Review + Audit teams** independently validate quality (7+7 roles)
-7. **SYNTHESIZER** produces final report with confidence ratings and actionable recommendations
-8. **Post-task**: System reflects, extracts lessons, updates experience database for next time
-
-**Next time a similar task comes in, it's faster and better.**
-
----
-
-## Why This Architecture
-
-**For solopreneurs and small teams**: One person can orchestrate the analytical power of a department. The system handles decomposition, parallel execution, cross-validation, and quality assurance — you focus on decisions.
-
-**For AI builders**: A battle-tested framework for multi-agent orchestration that actually works in production. Not a toy demo — this runs real business analysis, competitive intelligence, and strategic planning.
-
-**Self-improving**: Unlike static agent frameworks, this system gets stronger with use. Experience accumulates, patterns cross-pollinate, and the knowledge decay engine keeps signal-to-noise ratio healthy.
+| Feature | Most frameworks | This one |
+|---------|----------------|----------|
+| Agent coordination | Chain / graph | **Parallel waves with dependencies** |
+| Quality assurance | Self-review | **14 independent reviewer/auditor roles** |
+| Learning | None | **6-gear self-evolution engine** |
+| Data freshness | Trust everything | **TTL expiry on every data point** |
+| Confidence | Binary yes/no | **5-star multi-source verification** |
+| Pattern library | Start from scratch | **5 battle-tested patterns + role library** |
+| Model lock-in | Tied to one LLM | **4-layer abstraction, 80% model-agnostic** |
 
 ---
 
 ## License
 
-[Apache 2.0](LICENSE) — Use it, modify it, build on it.
+[Apache 2.0](LICENSE)
 
 ## Built For
 
 [OpenClaw](https://github.com/openclaw/openclaw) — The AI agent platform.
+
+---
+
+*One person. An entire company's analytical firepower. That's the point.*
