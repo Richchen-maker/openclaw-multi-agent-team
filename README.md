@@ -1,320 +1,271 @@
-# 🏭 OpenClaw Multi-Agent Team Framework
+# 🐊 OpenClaw Multi-Agent Team Framework
 
-**One framework. Unlimited teams. They work together.**
+**From single teams to intelligent multi-team orchestration.**
 
-一套框架，造无数支团队。团队之间还能协作。
-
----
-
-不是给你一个Agent。是给你一个**造Agent团队的工厂**。
-
-你定义角色，你编排流程，你配武器库 —— 框架负责把它们变成一支能自主协作的团队。
-
-**关键是：你可以造很多支团队，它们之间能互相协作，像一家真正的公司一样运转。**
-
-电商团队发现数据缺口 → 自动触发数据采集团队补数据 → 采集被反爬拦截 → 自动触发安全团队突破 → 突破方案反哺回采集团队。
-
-**一个人，指挥一家公司。**
-
-电商选品？数据采集？安全攻防？法务审查？投研分析？内容生产？学术科研？
-**都可以。只要你能定义角色和流程，这套架构就能把它跑起来。**
-
-> 📖 **New here?** Start with the [Installation Guide (INSTALL.md)](INSTALL.md) — takes you from zero to running.
+从单团队到多团队智能协作调度 —— 一个人指挥一家公司。
 
 ---
 
-## Core: A Domain-Agnostic Team Orchestration Engine
+## What's New: Multi-Team Intelligent Orchestrator v5.3.1
 
-This is not a tool for any specific vertical. It's a **universal multi-agent collaboration architecture**:
+The framework has evolved from individual team coordination to **cross-team intelligent orchestration**:
 
-**① ORCHESTRATOR Protocol** — How to decompose tasks, what runs in parallel vs serial, how to arbitrate conflicts
+- 🧬 **DNA Foundation** — 9 inherited genes providing consistent architecture across all task patterns
+- 🔄 **11-Step Pipeline** — From complexity assessment → team assembly → parallel execution → cross-validation → quality audit → synthesis → post-task reflection
+- 📊 **3 Execution Tiers** — Lite (2-3 agents) / Standard (4-6, with full QA) / Full (6-8, with RED-TEAM)
+- 🧠 **6 Self-Evolution Gears** — Evolution ledger, model abstraction, cross-pattern learning, capability frontier, knowledge decay engine, structured experience extraction
+- 🎯 **9 Task Patterns** — Ecommerce, Competitive Analysis, Business Plan, Content Matrix, Tech Evaluation, Intelligence, and more
+- 👥 **60+ Agent Roles** — Analysis, Research, Creative, Intelligence, Engineering, Visualization, Review (7 roles), Audit (7 roles)
+- ✅ **Independent Quality Assurance** — Separate Review Team + Audit Team, never participate in execution
 
-**② Role Template System** — Each agent's mission, tool permissions, execution steps, output standards, red-team self-check
-
-**③ Blackboard Collaboration** — Agents don't talk to each other. They coordinate through shared files. Zero coupling.
-
-**④ Tool Bootstrap Layer** — Auto-checks weapon availability before agent launch. Missing tools get reported, not silently ignored.
-
-**⑤ Quality Gates** — Every output must carry confidence levels + data sources + self-critique. Fails get rejected and reworked.
-
-Take this architecture, fill in your own roles and tools, and you have a new team.
+> **The orchestrator doesn't just dispatch tasks — it learns from every execution, cross-pollinates insights between patterns, and gets stronger over time.**
 
 ---
 
-## 3 Open-Source Teams — Examples, Not the Product
-
-| Example | Vertical | Roles | Arsenal Scale |
-|---------|----------|-------|---------------|
-| 🛒 **E-commerce Team** | Cross-border e-commerce | 6 roles (Research → Scouting → Pricing → Content → Decision) | Light — mostly search + analysis |
-| 📡 **Data Collection Team** | General data engineering | 6 roles (Discovery → Crawling → Cleaning → Warehousing → Monitoring) | Medium — Python scripts + database |
-| 🛡️ **ARC Team** (Anti-Risk Control) | Security research | 6 roles (Reverse → Fingerprint → Protocol → CAPTCHA → Vuln → Defense) | Heavy — 54 specialized security tools |
-
-Three teams. Three completely different domains. **Same architecture underneath.**
-
-They exist to show you: how to write role templates, how to design blackboards, how to configure tool chains, and how the orchestrator dispatches work.
-
-**But the team you actually need? You build that yourself.**
-
----
-
-## Architecture
+## Architecture Evolution
 
 ```
-                    ┌─────────────┐
-                    │  CONDUCTOR   │
-                    │ (Orchestrator)│
-                    └──────┬──────┘
-                           │ dispatch / arbitrate
-            ┌──────────────┼──────────────┐
-            ▼              ▼              ▼
-    ┌───────────┐  ┌───────────┐  ┌───────────┐
-    │  Role A   │  │  Role B   │  │  Role C   │
-    │ (Analyst) │→ │ (Creator) │→ │ (Monitor) │
-    └─────┬─────┘  └─────┬─────┘  └─────┬─────┘
-          │              │              │
-          └──────────────┼──────────────┘
-                         ▼
-                  ┌─────────────┐
-                  │  BLACKBOARD  │
-                  │ (Shared State)│
-                  └─────────────┘
-                         ▲
-                    Feedback Loop ↺
-```
+v1.0 Single Team                    v5.3.1 Multi-Team Orchestration
+─────────────────                   ─────────────────────────────────
 
-### Core Concepts
-
-| Concept | Description |
-|---------|-------------|
-| **CONDUCTOR** | The lead agent. Decomposes tasks, dispatches sub-agents, arbitrates conflicts |
-| **Roles** | Specialized sub-agents with focused templates |
-| **Blackboard** | Shared file-based state — agents read/write to coordinate without direct messaging |
-| **Flywheel** | Closed-loop — outputs feed back as inputs for continuous improvement |
-| **TOOL-BOOTSTRAP** | Injected into every sub-agent to standardize tool usage and quality gates |
-
-### Three Operating Modes (per team)
-
-| Mode | Trigger | Flow |
-|------|---------|------|
-| **Full Pipeline** | "Run team on target X" | CONDUCTOR → parallel dispatch → sequential stages → final decision |
-| **Event-Driven** | Anomaly detected | Monitor → CONDUCTOR → targeted specialist → decision |
-| **Reactive** | External trigger | CONDUCTOR → parallel analysts → quick decision |
-
----
-
-## Build Your Own Team — 4 Steps
-
-```
-1. Define Roles    — What specialists does your domain need? How many? Who leads?
-2. Design Workflow — What's parallel? What's serial? Whose output feeds whom?
-3. Deploy Arsenal  — What tools do your roles need? APIs? CLIs? Browsers? Databases?
-4. Design Blackboard — What state do roles share? Tasks? Data? Decisions?
-```
-
-Copy an example team, edit the templates, swap the tools — you have a brand new team.
-
-```bash
-cp -r examples/ecommerce-team ~/.openclaw/workspace/my-research-team
-# Edit templates/ for your domain
-# Edit ORCHESTRATOR.md for your workflow
-# See docs/CUSTOMIZATION.md for the full guide
+┌─────────────┐                     ┌──────────────────────────────┐
+│  CONDUCTOR  │                     │     DECISION ENGINE          │
+│  (1 team)   │                     │  Complexity → Pattern Match  │
+└──────┬──────┘                     │  → Experience Recall         │
+       │                            │  → Team Assembly             │
+  ┌────┼────┐                       └──────────┬───────────────────┘
+  ▼    ▼    ▼                                  │
+┌───┐┌───┐┌───┐                     ┌──────────┼──────────┐
+│ A ││ B ││ C │                     ▼          ▼          ▼
+└─┬─┘└─┬─┘└─┬─┘                  Wave 1    Wave 2    Wave 3
+  │    │    │                    (parallel) (parallel) (parallel)
+  └────┼────┘                       │          │          │
+       ▼                            └──────────┼──────────┘
+┌─────────────┐                                ▼
+│  BLACKBOARD │                     ┌─────────────────────┐
+└─────────────┘                     │  VERIFIER (Step 5)  │
+                                    │  Cross-validation   │
+                                    └──────────┬──────────┘
+                                               ▼
+                                    ┌─────────────────────┐
+                                    │  P6 Quality Gate    │
+                                    │  Review + Audit     │
+                                    └──────────┬──────────┘
+                                               ▼
+                                    ┌─────────────────────┐
+                                    │  SYNTHESIZER        │
+                                    │  Final Report       │
+                                    └──────────┬──────────┘
+                                               ▼
+                                    ┌─────────────────────┐
+                                    │  POST-TASK          │
+                                    │  Reflection + Learn │
+                                    └─────────────────────┘
 ```
 
 ---
 
-## Included Team Details
+## DNA Foundation: 9 Genes Every Pattern Inherits
 
-### 🛒 E-commerce Team (6 roles)
-
-| Role | Codename | Mission |
-|------|----------|---------|
-| Lead | **CONDUCTOR** | Task decomposition, dispatch, conflict arbitration |
-| Market Research | **RADAR** | Category trends, market size, growth signals |
-| Product Scouting | **SCOUT** | Supplier discovery, product evaluation, scoring |
-| Content Creation | **FORGE** | Listing copy, A+ content, SEO optimization |
-| Pricing Strategy | **BLADE** | Competitive pricing, margin modeling |
-| Data Monitoring | **PULSE** | Real-time alerts, anomaly detection |
-| Decision Making | **ORACLE** | Go/No-Go with kill criteria and stop-loss |
-
-### 📡 Data Collection Team (6 roles)
-
-| Role | Codename | Mission |
-|------|----------|---------|
-| Lead | **DISPATCHER** | Task routing, pipeline orchestration |
-| Source Mapper | **MAPPER** | Data source discovery, feasibility analysis |
-| Web Spider | **SPIDER** | Structured crawling, anti-ban handling |
-| Data Refiner | **REFINER** | Cleaning, dedup, normalization |
-| Data Warehouse | **WAREHOUSE** | Storage, indexing, versioning (SQLite + JSON) |
-| Sentinel | **SENTINEL** | Monitoring, alerting on source changes |
-
-### 🛡️ ARC Team — Anti-Risk Control (6 roles)
-
-| Role | Codename | Mission |
-|------|----------|---------|
-| Lead | **COMMANDER** | Mission planning, cross-role coordination |
-| Reverse Engineer | **REVERSER** | API reverse engineering, binary analysis |
-| Fingerprint Engineer | **PHANTOM** | TLS spoofing, browser stealth, proxy management |
-| Protocol Attacker | **STRIKER** | Fuzzing, rate testing, protocol probing |
-| Risk Control Evader | **MIMIC** | CAPTCHA solving (5-engine), behavior simulation |
-| Vulnerability Hunter | **HUNTER** | Vuln scanning, subdomain enum, XSS/SQLi |
-| Defense Analyst | **SHIELD** | WAF identification, defense-level assessment (L1-L5) |
-
-> ⚠️ **ARC Team is for defense research only.** See `TOOL-BOOTSTRAP.md` for iron rules.
-
-### Cross-Team Collaboration — This Is the Real Power
-
-Teams don't live in silos. They form a **company-level workflow**:
-
-```
-🛒 E-commerce spots data gap
-    ↓
-📡 Data Collection auto-dispatches crawl task
-    ↓ blocked by anti-bot
-🛡️ ARC assesses defense, provides bypass strategy
-    ↓ strategy fed back
-📡 Data Collection retries with new approach → data acquired
-    ↓
-🛒 E-commerce completes analysis with fresh data → Go/No-Go decision
-```
-
-You're not running isolated agents. You're running **an organization**.
-
-Build as many teams as you need. Connect them through the [Event Bus](framework/EVENT-BUS.md). One person, one framework, unlimited teams — operating like a full company.
-
-**Full chain runs with zero human intervention. You only said one sentence.**
+| Gene | Name | What It Does |
+|------|------|-------------|
+| 1 | Layered Architecture | Collection → Processing → Cross-Validation → Evolution |
+| 2 | 5 Core Protocols | MVP-P (multi-source verify) / SEP (self-evolution) / DKR (domain knowledge) / WaC (work-as-code) / RSP (real-time status) |
+| 3 | Real-Time Progress Panel | Live status dashboard — every agent reports on completion, not at the end |
+| 4 | Independent Role Prompts | Each role has a structured prompt template (7-element standard) |
+| 5 | Domain Red Lines | 🔴 Critical / 🟡 Domain-specific / 🟢 Best practice — three-tier constraints |
+| 6 | Deployment Tiers | Lite / Standard / Full — scale to task complexity |
+| 7 | TTL Data Freshness | Every data point has an expiry. Prices ≤1h, News ≤7d, Reports ≤90d |
+| 8 | Knowledge Crystallization | 5 types of post-task knowledge capture (entities, strategies, pitfalls, preferences, frameworks) |
+| 9 | Cross-Validation Standards | ⭐-⭐⭐⭐⭐⭐ confidence rating. Single source ≤⭐⭐⭐. Multi-source ≥⭐⭐⭐⭐ |
 
 ---
 
-## How It Works in Practice
-
-Send a message from your phone. Team runs automatically:
+## 11-Step Execution Pipeline
 
 ```
-You (Telegram/Discord/Slack): "启动XX团队，目标：YYY"
-
-→ CONDUCTOR decomposes the task
-→ Multiple agents launch in parallel
-→ Blackboard collaboration, results aggregated
-→ 15 min later, full report pushed to your phone
+Step 0   Complexity Check ─── Is this a multi-team task? (2+ domains → yes)
+Step 1   Pattern Match ────── Which pattern(s) fit? (A-H, or hybrid)
+Step 1.5 Experience Recall ── Pull lessons from experience-db before executing
+Step 2   Team Assembly ────── Select roles, set wave dependencies
+Step 3   Prompt Injection ─── Inject shared intel + TAP timestamps + domain rules
+Step 4   Parallel Execution ─ sessions_spawn all waves + real-time progress panel
+Step 5   VERIFIER ─────────── Cross-validation + TTL check + confidence scoring
+Step 6   P6 Quality Gate ──── Independent Review Team (7) + Audit Team (7)
+Step 7   Fix & Revalidate ─── Address P6 findings, re-verify
+Step 8   SYNTHESIZER ──────── Generate final report (10-chapter structure)
+Step 9   Post-Task Reflection  SEP self-evolution + knowledge crystallization
 ```
-
-You're not at the computer. The team is working.
 
 ---
 
-## Directory Structure
+## Self-Evolution: 6 Gears
+
+The system doesn't just execute — it **evolves**:
+
+| Gear | Engine | Purpose |
+|------|--------|---------|
+| 1 | Evolution Ledger | Quantify progress: 13 metrics tracking VERSION/ROLES/QUALITY/COVERAGE trends |
+| 2 | Model Abstraction Protocol | 4-layer decoupling — 80% of system value is model-agnostic |
+| 3 | Cross-Pattern Learning | Extract reusable insights from one pattern, inject into others |
+| 4 | Capability Frontier | 🟢 Verified / 🟡 Untested / 🔴 Gap — directional growth map |
+| 5 | Knowledge Decay Engine | TTL-based freshness management, compression protocols, health metrics |
+| 6 | Structured Experience Extraction | Post-task: pollination check → ledger update → frontier update |
+
+**Vertical axis**: task → reflection → accumulation → recall (deeper each cycle)
+**Horizontal axis**: success in one pattern → pollinate → other patterns benefit
+**Meta axis**: quantified tracking + noise governance + directional growth
+
+---
+
+## Task Patterns
+
+| Pattern | Domain | Trigger Words | Status |
+|---------|--------|---------------|--------|
+| A | E-commerce Analysis | SYCM / category analysis / market sizing | ✅ Open |
+| B | Patent Mining | patents / inventions / novelty | 🔒 Private |
+| C | Competitive Intelligence | competitors / SWOT / market landscape | ✅ Open |
+| D | Business Plan | BP / gov funding / project proposal | ✅ Open |
+| E | Content Matrix | content strategy / multi-platform / batch creation | ✅ Open |
+| F | Tech Evaluation | tech selection / architecture / solution comparison | ✅ Open |
+| H | Elite Intelligence | OSINT / FININT / due diligence / entity tracking | 🔒 Private |
+| R | R&D Innovation | systematic invention / TRIZ / tech gaps | 🔒 Private |
+| G | General | Anything not matching A-F/H/R — free-form team assembly | ✅ Open |
+
+---
+
+## Role Library (60+ Roles across 11 Categories)
+
+**Analysis**: QUANT / INTEL / DEMAND / FORECAST / ANALYST-{X}
+
+**Research**: SCHOLAR / POLICY / INDUSTRY
+
+**Creative**: CREATIVE / WRITER / VISUAL / PLATFORM-{X}
+
+**Intelligence**: FUSION-LEAD / OSINT / FININT / GRAPH-ANALYST / PREDICTOR
+
+**Engineering**: CRAWLER / ENGINEER / INTEGRATOR
+
+**Visualization**: QUANT-VIZ / SEO-VIZ / FUNNEL-VIZ / STRATEGY-VIZ
+
+**Review Team** (7 roles): FACT-CHECK / LOGIC-CHECK / COVERAGE-CHECK / DEPTH-CHECK / BIAS-CHECK / ACTIONABILITY-CHECK / REVIEW-LEAD
+
+**Audit Team** (7 roles): SEC-AUDIT / DATA-AUDIT / SOURCE-AUDIT / DELIVERY-AUDIT / COMPLIANCE-AUDIT / REPRODUCIBILITY-AUDIT / AUDIT-LEAD
+
+**Meta**: RED-TEAM / SYNTHESIZER / VERIFIER
+
+---
+
+## Quality Assurance: Hard Constraints
+
+### 🔴 Iron Rules (Never Violate)
+
+| # | Constraint |
+|---|-----------|
+| H1 | Execution order is strict: VERIFIER → P6 → Fix → SYNTHESIZER (no skipping) |
+| H2 | VERIFIER must be an independent agent (not the orchestrator) |
+| H3 | SYNTHESIZER must be an independent agent (prevent copy-paste errors) |
+| H4 | P6 Quality Gate requires minimum 3 independent agents |
+| H5 | Sensitive data must never appear in web_search queries |
+| H6 | CONDITIONAL findings must be fixed and re-verified before delivery |
+| H7 | Real-time progress panel is mandatory (all tiers including Lite) |
+| H8 | Domain red-line 🔴 violations = task FAIL |
+| H9 | Core conclusions must carry confidence ratings (⭐-⭐⭐⭐⭐⭐) |
+
+---
+
+## Project Structure
 
 ```
 openclaw-multi-agent-team/
-├── README.md
-├── INSTALL.md                    # From-zero deployment guide
-├── LICENSE                       # MIT
-├── framework/
-│   ├── ARCHITECTURE.md           # Core architecture (domain-agnostic)
-│   ├── ORCHESTRATOR.md           # CONDUCTOR execution protocol
-│   ├── TOOL-BOOTSTRAP.md         # Sub-agent tool injection template
-│   ├── BLACKBOARD-SPEC.md        # Blackboard read/write rules
-│   └── TEAM-ROUTER.md            # Multi-team dispatch routing
-├── examples/
-│   ├── ecommerce-team/           # 🛒 6 roles, light arsenal
-│   ├── data-collection-team/     # 📡 6 roles, Python scripts + DB
-│   ├── arc-team/                 # 🛡️ 6 roles, 54-weapon arsenal
-│   └── content-team/             # 📝 4 roles, writing pipeline
-└── docs/
-    ├── CUSTOMIZATION.md          # How to build your own team
-    ├── ROLE-DESIGN.md            # Best practices for role templates
-    └── TROUBLESHOOTING.md        # Common issues and fixes
+├── README.md                          ← You are here
+├── LICENSE
+├── INSTALL.md
+│
+├── multi-team-orchestrator/           ← 🆕 Multi-Team Intelligent Orchestrator v5.3.1
+│   ├── SKILL.md                       ← Core: decision engine + pipeline + roles + constraints
+│   ├── CHANGELOG.md                   ← Version history
+│   ├── README.md                      ← Orchestrator-specific docs
+│   ├── references/
+│   │   ├── pattern-ecommerce.md       ← E-commerce analysis pattern
+│   │   ├── pattern-competitive.md     ← Competitive intelligence pattern
+│   │   ├── pattern-business-plan.md   ← Business plan pattern
+│   │   ├── pattern-content-matrix.md  ← Content matrix pattern
+│   │   ├── pattern-tech-eval.md       ← Tech evaluation pattern
+│   │   ├── team-review.md            ← Review team (7 role prompts)
+│   │   ├── team-audit.md             ← Audit team (7 role prompts)
+│   │   ├── model-abstraction-protocol.md  ← Model-agnostic design
+│   │   ├── cross-pattern-learning.md      ← Cross-pattern pollination
+│   │   └── knowledge-decay-engine.md      ← Knowledge freshness management
+│   └── experience-db/                ← Self-evolution data store (templates)
+│       ├── routing-patterns.md
+│       ├── prompt-evolution.md
+│       ├── team-performance.md
+│       ├── failure-cases.md
+│       ├── methodology-library.md
+│       ├── metrics.md
+│       ├── evolution-ledger.md
+│       ├── capability-frontier.md
+│       └── archive/
+│
+├── framework/                         ← Core framework (EventBus, Blackboard, Router)
+├── examples/                          ← Example teams
+│   ├── ecommerce-team/               ← E-commerce (6 roles)
+│   ├── data-collection-team/         ← Data engineering (6 roles)
+│   ├── content-team/                 ← Content creation (4 roles)
+│   ├── arc-team/                     ← Security research (6 roles)
+│   └── intelligence-team/            ← Intelligence analysis (4 roles)
+├── events/                            ← Event bus directories
+└── docs/                             ← Guides and architecture diagrams
 ```
 
 ---
 
-## Runtime Features (Production-Grade)
+## Getting Started
 
-Event Bus Runtime — 跨团队自动协作引擎，21个Python模块，4500+ lines：
-
-- ✅ **Event Bus Runtime** — scan → route → dispatch 核心循环
-- ✅ **CronDispatcher** — 写DispatchRequest → Watchdog cron消费，解耦执行
-- ✅ **Dynamic Capability Registry** — `capabilities.yaml` 声明即接入，零代码路由
-- ✅ **DataBus** — Schema-validated data references（内置4种Schema）
-- ✅ **Priority Queue** — CRITICAL事件优先dispatch
-- ✅ **Memory Bridge** — 跨团队知识共享（knowledge/{domain}/{topic}.md）
-- ✅ **Cost Controller** — Per-chain token预算，severity→model映射
-- ✅ **Chain Visualization** — `trace` 命令树形展示事件链路
-- ✅ **Team Self-Evolution** — 模式提取 + shortcut匹配，同类事件跳步执行
-- ✅ **Parallel Chain Scheduler** — 多链路并发，团队锁防冲突
-- ✅ **Watchdog V3** — 5种健康检查 + 智能恢复 + cron dispatch
-
+### Use as OpenClaw Skill
 ```bash
-# 快速体验
-cd openclaw-multi-agent-team
-PYTHONPATH=framework python3 -m eventbus status
-PYTHONPATH=framework python3 -m eventbus registry --scan
+# Copy multi-team-orchestrator/ to your OpenClaw skills directory
+cp -r multi-team-orchestrator/ ~/.openclaw/workspace/skills/multi-team-orchestrator/
+
+# The orchestrator activates automatically when tasks need 2+ professional domains
 ```
 
-详见 [Event Bus详解](framework/EVENT-BUS.md) | [跨团队协作指南](docs/CROSS-TEAM-GUIDE.md)
+### Build Your Own Team
+See [INSTALL.md](INSTALL.md) for the original team framework setup.
+See [docs/CUSTOMIZATION.md](docs/CUSTOMIZATION.md) for creating custom teams.
 
 ---
 
-## Quick Start
+## How It Works (30-Second Version)
 
-### 1. Install OpenClaw
+1. **You say**: "Analyze the competitive landscape of collaborative robots in China"
+2. **Decision engine** detects: 2+ domains needed → Pattern C (Competitive) → Standard tier
+3. **Team assembles**: INTEL-CORE + QUANT-COMPARE + PRODUCT-TEARDOWN + PRICING-STRATEGY + MOAT-ASSESSMENT
+4. **Parallel execution**: All agents run simultaneously, each with role-specific prompts and shared intelligence
+5. **VERIFIER** cross-checks all outputs, flags contradictions, scores confidence
+6. **Review + Audit teams** independently validate quality (7+7 roles)
+7. **SYNTHESIZER** produces final report with confidence ratings and actionable recommendations
+8. **Post-task**: System reflects, extracts lessons, updates experience database for next time
 
-```bash
-npm install -g openclaw
-openclaw setup
-```
-
-### 2. Clone & Deploy
-
-```bash
-git clone https://github.com/Richchen-maker/openclaw-multi-agent-team.git
-cp -r openclaw-multi-agent-team/examples/ecommerce-team ~/.openclaw/workspace/
-cp -r openclaw-multi-agent-team/framework ~/.openclaw/workspace/
-openclaw gateway start
-```
-
-### 3. Run
-
-Tell your agent:
-> "启动电商团队，评估品类：蓝牙耳机"
-
-See [INSTALL.md](INSTALL.md) for the full from-zero guide (all teams + all dependencies).
+**Next time a similar task comes in, it's faster and better.**
 
 ---
 
-## Design Principles
+## Why This Architecture
 
-1. **Blackboard, not direct messaging** — Agents coordinate through shared files
-2. **Parallel by default** — Independent tasks always run simultaneously
-3. **Red-team everything** — Every role template includes mandatory self-critique
-4. **Confidence grading** — All claims tagged HIGH/MEDIUM/LOW
-5. **Kill criteria** — Every Go decision has quantifiable stop-loss
-6. **Data over opinion** — Quantified data wins in conflict resolution
-7. **Source everything** — No data point without attribution
+**For solopreneurs and small teams**: One person can orchestrate the analytical power of a department. The system handles decomposition, parallel execution, cross-validation, and quality assurance — you focus on decisions.
+
+**For AI builders**: A battle-tested framework for multi-agent orchestration that actually works in production. Not a toy demo — this runs real business analysis, competitive intelligence, and strategic planning.
+
+**Self-improving**: Unlike static agent frameworks, this system gets stronger with use. Experience accumulates, patterns cross-pollinate, and the knowledge decay engine keeps signal-to-noise ratio healthy.
 
 ---
 
-## Tech Stack
+## License
 
-- Runtime: [OpenClaw](https://github.com/openclaw/openclaw) (open source)
-- LLM: Claude / GPT / Gemini (any provider)
-- Architecture: Sub-agent, independent sessions per role
-- Remote: Telegram / Discord / Slack / Feishu
-- Platforms: macOS / Linux / Windows (WSL2)
-- License: MIT — use it however you want
+[Apache 2.0](LICENSE) — Use it, modify it, build on it.
 
----
+## Built For
 
-## Contributing
-
-PRs welcome! Especially:
-- **New team examples** — show us your vertical
-- Framework architecture improvements
-- Better role templates
-- Translations
-
----
-
-**⭐ Star if you think one person deserves a whole team.**
-
-Built with 🐊 for the OpenClaw community.
+[OpenClaw](https://github.com/openclaw/openclaw) — The AI agent platform.
